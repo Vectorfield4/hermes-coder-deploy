@@ -1,5 +1,7 @@
 profile: coder
-model: deepseek-chat
+model: deepseek-reasoner
 temperature: 0.2
 max_tokens: 4096
 top_p: 0.9
+delegation:
+  model: deepseek/deepseek-chat

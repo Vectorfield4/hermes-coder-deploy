@@ -30,22 +30,17 @@
 - **cleanup-branch** — удаление ветки `feature/hermes-<task_id>` после завершения.
 - **deploy-ftp** — сборка проекта и выгрузка на FTP.
 
-## 🛠 Скрипты
+## ⏰ Активация loop-навыков (cron)
 
-| Скрипт | Назначение |
-|--------|------------|
-| `make init` | Создаёт `.env` файлы для всех профилей из `.env.example` |
-| `make up` | Запускает контейнеры (`docker compose up -d`) |
-| `make down` | Останавливает контейнеры |
-| `make logs` | Показывает логи всех контейнеров |
-| `make backup` | Создаёт бэкап Kanban-доски в `backups/` |
+Loop-навыки запускаются по расписанию через встроенный планировщик Hermes. Для этого в каждом профиле есть папка `cron/` с YAML-файлами:
 
-## 🚀 Быстрый старт
+- `profiles/dispatcher/cron/housekeeping-loop.yaml` — каждые 30 секунд
+- `profiles/coder/cron/worker-loop.yaml` — каждые 30 секунд
+- `profiles/qa/cron/qa-loop.yaml` — каждые 30 секунд
 
-```bash
-git clone https://github.com/Vectorfield4/hermes-coder-deploy.git
-cd hermes-coder-deploy
-chmod +x scripts/*.sh
-make init          # создаёт .env файлы
-# отредактируйте каждый .env, вставив реальные ключи
-make up            # запускает систему
+Пример `profiles/coder/cron/worker-loop.yaml`:
+
+```yaml
+schedule: "*/30 * * * * *"
+skill: worker-loop
+description: "Захватывает задачи в статусе ready, запускает create-pr"

@@ -1,0 +1,66 @@
+services:
+  dispatcher:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-dispatcher
+    restart: unless-stopped
+    volumes:
+      - ./data:/home/hermes/.hermes/data          # Общая Kanban
+      - ./workspace:/workspace                    # Опционально
+    env_file:
+      - ./profiles/dispatcher/.env                # Секреты
+    environment:
+      - HERMES_PROFILE=dispatcher
+    command: >
+      sh -c "
+        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
+        hermes gateway run --profile dispatcher
+      "
+    healthcheck:
+      test: ["CMD", "hermes", "gateway", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  coder:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-coder
+    restart: unless-stopped
+    volumes:
+      - ./data:/home/hermes/.hermes/data
+      - ./workspace:/workspace
+    env_file:
+      - ./profiles/coder/.env
+    environment:
+      - HERMES_PROFILE=coder
+    command: >
+      sh -c "
+        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias coder &&
+        hermes gateway run --profile coder
+      "
+    healthcheck:
+      test: ["CMD", "hermes", "gateway", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  qa:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-qa
+    restart: unless-stopped
+    volumes:
+      - ./data:/home/hermes/.hermes/data
+      - ./workspace:/workspace
+    env_file:
+      - ./profiles/qa/.env
+    environment:
+      - HERMES_PROFILE=qa
+    command: >
+      sh -c "
+        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias qa &&
+        hermes gateway run --profile qa
+      "
+    healthcheck:
+      test: ["CMD", "hermes", "gateway", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

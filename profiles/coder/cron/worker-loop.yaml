@@ -1,3 +1,0 @@
-schedule: "*/30 * * * * *"   # каждые 30 секунд
-skill: worker-loop
-description: "Берёт задачи из Kanban и запускает create-pr"

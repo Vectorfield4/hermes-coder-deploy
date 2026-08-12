@@ -1,3 +1,0 @@
-schedule: "*/30 * * * * *"   # каждые 30 секунд
-skill: housekeeping-loop
-description: "Сканирует Kanban на zombie-задачи, отправляет уведомления о смене статуса"

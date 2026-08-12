@@ -1,3 +1,0 @@
-schedule: "*/30 * * * * *"   # каждые 30 секунд
-skill: qa-loop
-description: "Захватывает задачи в статусе review, запускает review-and-deploy"

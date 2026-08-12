@@ -4,19 +4,19 @@ services:
     container_name: hermes-dispatcher
     restart: unless-stopped
     volumes:
-      - ./data:/home/hermes/.hermes/data          # Общая Kanban
-      - ./workspace:/workspace                    # Опционально
+      - ./hermes-data:/home/hermes/.hermes
+      - ./workspace:/workspace
     env_file:
-      - ./profiles/dispatcher/.env                # Секреты
+      - ./profiles/dispatcher/.env
     environment:
       - HERMES_PROFILE=dispatcher
     command: >
       sh -c "
         hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
-        hermes gateway run --profile dispatcher
+        hermes kanban work --profile dispatcher --role orchestrator --skill orchestrate-task --loop --interval 5
       "
     healthcheck:
-      test: ["CMD", "hermes", "gateway", "status"]
+      test: ["CMD", "hermes", "kanban", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,7 +26,7 @@ services:
     container_name: hermes-coder
     restart: unless-stopped
     volumes:
-      - ./data:/home/hermes/.hermes/data
+      - ./hermes-data:/home/hermes/.hermes
       - ./workspace:/workspace
     env_file:
       - ./profiles/coder/.env
@@ -35,10 +35,10 @@ services:
     command: >
       sh -c "
         hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias coder &&
-        hermes gateway run --profile coder
+        hermes kanban work --profile coder --role developer --skill execute-task --skip_context_files --loop --interval 5
       "
     healthcheck:
-      test: ["CMD", "hermes", "gateway", "status"]
+      test: ["CMD", "hermes", "kanban", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -48,7 +48,7 @@ services:
     container_name: hermes-qa
     restart: unless-stopped
     volumes:
-      - ./data:/home/hermes/.hermes/data
+      - ./hermes-data:/home/hermes/.hermes
       - ./workspace:/workspace
     env_file:
       - ./profiles/qa/.env
@@ -57,7 +57,28 @@ services:
     command: >
       sh -c "
         hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias qa &&
-        hermes gateway run --profile qa
+        hermes kanban work --profile qa --role qa --skill execute-qa-task --loop --interval 5
+      "
+    healthcheck:
+      test: ["CMD", "hermes", "kanban", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  
+  telegram-bot:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-telegram
+    restart: unless-stopped
+    volumes:
+      - ./hermes-data:/home/hermes/.hermes
+    env_file:
+      - ./profiles/dispatcher/.env
+    environment:
+      - HERMES_PROFILE=dispatcher
+    command: >
+      sh -c "
+        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
+        hermes gateway run --profile dispatcher --skill command-handler --gateway telegram
       "
     healthcheck:
       test: ["CMD", "hermes", "gateway", "status"]

@@ -8,16 +8,16 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Use `metadata.type` if present (ui, content, integration).
    - Else, infer from `title`/`description`.
 
-2. **Discover and invoke the right skill**
-   - Call `skill_discover(type)` to find a skill with a matching tag (type → tag map below).
+2. **Invoke the right skill**
+   - Route by the explicit type → skill map below. The map is **authoritative**: `skill_discover(type)` alone is ambiguous because several skills share the `ui` / `content` tags (e.g. `ui` matches `ui-implementer`, `ui-architect`, `simple-task-executor`, `threejs-scene-builder`).
    - Type-to-skill mapping (standardized stack, see project `AGENTS.md`):
      - `ui` → `ui-implementer` (or `simple-task-executor` for quick forms/tables)
      - `3d`/`threejs` → `threejs-scene-builder`
      - `integration` → `integration-specialist`
      - `content` → `content-strategist` / `narrative-designer`
      - planning → `technical-planner`
-   - If found: call `skill_run(<discovered_skill>, project, branch, description, rules_context)`.
-   - If not found: fallback to `skill_run(simple-task-executor, project, branch, description)`.
+   - Call `skill_run(<mapped_skill>, project, branch, description, rules_context)`.
+   - Fallback: if the mapped skill is not installed, call `skill_discover(type)`; if still nothing is found, `skill_run(simple-task-executor, project, branch, description)`.
    - Before each `skill_run`, load the matching `frontend-stack` reference via `skill_view("frontend-stack", "references/<file>.md")`:
      - ui → `references/mui.md`, `references/react.md` (plus `zustand.md` / `tanstack-query.md` when state/data is involved)
      - 3d / threejs → `references/threejs-r3f.md`

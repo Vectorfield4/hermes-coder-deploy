@@ -22,7 +22,7 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 - **orchestrate-task** — decomposes a task into component sub-tasks (UI / content / integration), coordinates a single shared branch `feature/<task_id>-<title>` and a final PR task.
 
 ### coder
-- **execute-task** — executes a single component sub-task (`component: true`), initializes projects (`type: init`), or aggregates changes and creates a PR (`pr_creation: true`).
+- **execute-task** — executes a single component sub-task (`component: true`), initializes projects (`type: init`), aggregates changes and creates a PR (`pr_creation: true`, then hands off to QA), or fixes QA findings (`type: review`).
 - **create-pr** — validation (lint/tests), commit, push of the branch, PR creation.
 - **project-init** / **setup-ci** — project initialization (for `type: init` tasks).
 - **project-discover** — scans `/workspace`, reads project context (`AGENTS.md`, `.hermes.md`, etc.).
@@ -30,7 +30,7 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 - Specialized: **ui-architect**, **ui-implementer**, **content-strategist**, **integration-specialist**, **technical-planner**, **narrative-designer**, **simple-task-executor**, **threejs-scene-builder**.
 
 ### qa
-- **execute-qa-task** — runs the review task: invokes `review-and-deploy`, returns the task to the coder (`ready`) when issues are found, or blocks it (`blocked`).
+- **execute-qa-task** — runs the review task (`type: review`): invokes `review-and-deploy`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The task loops coder ↔ QA until QA passes.
 - **review-and-deploy** — checks CI (waits up to 10 min), code review, merge (squash), deploy.
 - **resolve-merge-conflict** — automatic conflict resolution via `git merge --strategy-option theirs`.
 - **cleanup-branch** — deletes the branch after completion.

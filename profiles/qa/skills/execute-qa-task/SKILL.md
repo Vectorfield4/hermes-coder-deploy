@@ -47,8 +47,8 @@ metadata:
      - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "QA passed. Ready for merge."`
      - Optionally, notify via Telegram (but that's out of scope).
    - **If `review-and-deploy` returns NEEDS_FIXES** (minor issues, comments):
-     - Move the task back to `ready` with `assignee: coder` so that the developer can fix the issues.
-     - Use `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"`.
+      - Move the task back to the coder as **high priority** so the coder loop picks it up next:
+      - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"` where the board supports it.
    - **If `review-and-deploy` returns FAILURE** (critical errors, deployment failure, CI crash):
      - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "QA failed: <error details>"`.
      - Optionally, notify the team.

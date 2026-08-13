@@ -23,6 +23,7 @@ metadata:
    - `type == "init"` → load `skill_view("execute-task", "references/init.md")` and follow it. Project rules are not loaded — the project may not exist yet.
    - `component == true` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/component.md")` and follow it.
    - `pr_creation == true` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/pr.md")` and follow it.
+   - `type == "review"` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/review-fix.md")` and follow it. This flow is entered when QA moved the task back for fixes; `project`, `branch`, and `pr_url` come from task metadata.
    - Otherwise → `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "Unknown task type"`.
 
 ## Conventions (all flows)

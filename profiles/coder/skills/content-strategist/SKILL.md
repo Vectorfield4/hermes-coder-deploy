@@ -1,29 +1,33 @@
 ---
 name: content-strategist
-description: Создаёт контент-план на основе нарратива
+description: Creates a content plan based on the narrative
+metadata:
+  hermes:
+    tags: [content]
+    related_skills: [narrative-designer]
 ---
 
 # Content Strategist
 
-Твоя задача — на основе нарратива написать структурированный контент-план.
+Your task is to write a structured content plan based on the narrative.
 
-## Инструкции
+## Instructions
 
-1. Прочитай `artifacts/narrative.md`.
+1. Read `artifacts/narrative.md`.
 
-2. Создай контент-план со следующими блоками:
-   - **H1**: Главный заголовок (привлекающий внимание)
-   - **Подзаголовок**: Уточняет, что делает продукт
-   - **Блок 1 (Hero)**: УТП + CTA
-   - **Блок 2 (Проблема)**: Описание боли
-   - **Блок 3 (Решение)**: Как продукт решает проблему
-   - **Блок 4 (Преимущества)**: 3-5 ключевых преимуществ
-   - **Блок 5 (Кейсы/Доказательства)**: Примеры или цифры
-   - **Блок 6 (CTA)**: Призыв к действию
+2. Create a content plan with the following blocks:
+   - **H1**: Main headline (attention-grabbing)
+   - **Subheadline**: Clarifies what the product does
+   - **Block 1 (Hero)**: USP + CTA
+   - **Block 2 (Problem)**: Description of the pain point
+   - **Block 3 (Solution)**: How the product solves the problem
+   - **Block 4 (Benefits)**: 3-5 key benefits
+   - **Block 5 (Cases/Proof)**: Examples or numbers
+   - **Block 6 (CTA)**: Call to action
 
-3. Каждый блок должен иметь:
-   - Заголовок
-   - Текст (2-3 предложения)
-   - Рекомендованный визуал (что показать)
+3. Each block should have:
+   - A heading
+   - Text (2-3 sentences)
+   - A recommended visual (what to show)
 
-4. Сохрани результат в `artifacts/content-plan.md`.
+4. Save the result to `artifacts/content-plan.md`.

@@ -1,42 +1,54 @@
 ---
 name: simple-task-executor
-description: Быстрое выполнение простых задач (формы, таблицы, компоненты)
+description: Quickly completes simple tasks (forms, tables, components) on the standardized stack
+metadata:
+  hermes:
+    tags: [ui, form, quick]
+    related_skills: [ui-implementer]
 ---
 
 # Simple Task Executor
 
-Ты — специалист по быстрым задачам. Если пользователь просит форму, таблицу или компонент — ты делаешь это быстро и качественно.
+You are a specialist in quick tasks. If the user asks for a form, table, or component — do it quickly and well on the standardized stack (React + MUI, see the project `AGENTS.md`).
 
-## Инструкции
+## Instructions
 
-1. Проанализируй запрос.
+1. Analyze the request.
 
-2. Определи тип задачи:
-   - `registration` — форма регистрации
-   - `login` — форма входа
-   - `profile` — профиль пользователя
-   - `table` — таблица с данными
-   - `form` — произвольная форма
-   - `component` — отдельный компонент
-   - `page` — простая страница без 3D
+2. Load the stack references via `skill_view` that match the task:
+   - `references/react.md`, `references/mui.md` (always)
+   - `references/react-hook-form.md`, `references/zod.md` (for forms)
+   - `references/tanstack-query.md` (if API calls are involved)
+   - `references/vitest.md`, `references/msw.md` (if a test is requested)
 
-3. Сгенерируй код:
-   - Используй React + MUI + Tailwind
-   - Добавь валидацию для форм
-   - Добавь обработчики (заглушки или реальные API)
-   - Сделай адаптивным
+3. Determine the task type:
+   - `registration` — registration form
+   - `login` — login form
+   - `profile` — user profile
+   - `table` — data table
+   - `form` — arbitrary form
+   - `component` — a single component
+   - `page` — a simple page without 3D
 
-4. Если задача сложная для быстрого решения — делегируй:
+4. Generate the code:
+   - Use React + MUI (`sx` / `styled`, no Tailwind)
+   - For forms — `react-hook-form` + `zod`
+   - Add handlers (stubs or real API calls via TanStack Query)
+   - Make it responsive
+
+5. If the task is too complex for a quick solution — delegate:
    ```python
    delegate_task(
-       goal="Создать страницу регистрации",
+       goal="Create a registration page",
        context="...",
        model="deepseek/deepseek-chat"
    )
+   ```
 
-Примеры
-Запрос: "Сделай страницу регистрации"
-→ Генерирует React-компонент с формой, валидацией, submit-обработчиком
+## Examples
 
-Запрос: "Сделай таблицу пользователей"
-→ Генерирует MUI Table + пагинацию + фильтры
+Request: "Create a registration page"
+→ Generates a React component with a form (react-hook-form + zod), validation, and a submit handler
+
+Request: "Create a user table"
+→ Generates an MUI Table with pagination and filters

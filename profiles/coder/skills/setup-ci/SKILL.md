@@ -1,18 +1,26 @@
 ---
 name: setup-ci
-description: Создаёт базовый CI-пайплайн (GitHub Actions).
+description: Creates a basic CI pipeline (GitHub Actions) for a project on the standardized stack (React + Vite + TypeScript).
+metadata:
+  hermes:
+    tags: [ci, github-actions]
+    related_skills: [project-init]
 ---
 
 # Setup CI
 
-Выполняется однократно при инициализации репозитория.
+Run once during repository initialization. The project is built on the standardized stack: React + Vite + TypeScript + MUI (see the deploy repo README).
 
-## Алгоритм
-1. Определить тип проекта:
-   - `package.json` → Node.js (npm install && npm test)
-   - `requirements.txt` → Python (pip install -r requirements.txt && pytest)
-   - `pom.xml` → Java (Maven)
-   - иначе – общий шаблон
-2. Создать `.github/workflows/ci.yml` с соответствующими шагами.
-3. Закоммитить и запушить файл.
-4. Добавить комментарий к задаче: "CI настроен".
+## Algorithm
+
+1. Create `.github/workflows/ci.yml`:
+   - Trigger: `push` and `pull_request` on the default branch (`main`/`master`).
+   - Steps:
+     1. `checkout`
+     2. `setup-node` (Node 20, npm cache)
+     3. `npm ci`
+     4. `npm run lint` (Biome)
+     5. `npm run test` (Vitest)
+     6. `npm run build` (tsc + vite build)
+2. Commit and push the file.
+3. Add a task comment: "CI configured".

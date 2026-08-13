@@ -1,45 +1,45 @@
 ---
 name: project-discover
-description: Сканирует рабочую область в поисках проекта
+description: Scans the workspace for projects
 ---
 
 # Project Discover
 
-## Описание
-Сканирует директорию `/workspace`, находит Git-репозитории, читает их контекстные файлы (`.hermes.md`, `AGENTS.md`, `.cursorrules`) и сохраняет информацию в память агента.
+## Overview
+Scans the `/workspace` directory, finds Git repositories, reads their context files (`.hermes.md`, `AGENTS.md`, `.cursorrules`) and saves the information to agent memory.
 
-## Инструкция
+## Instructions
 
-1.  **Сканирование**:
-    - Выполните `ls /workspace` и получите список папок.
-    - Для каждой папки проверьте, является ли она Git-репозиторием (наличие `.git`).
+1.  **Scanning**:
+    - Run `ls /workspace` and get the list of directories.
+    - For each directory, check whether it is a Git repository (presence of `.git`).
 
-2.  **Чтение контекста**:
-    - Для каждого найденного репозитория попытайтесь прочитать файлы в следующем порядке приоритета:
+2.  **Reading context**:
+    - For each repository found, try to read the files in the following priority order:
       1. `.hermes.md`
       2. `AGENTS.md`
       3. `CLAUDE.md`
       4. `.cursorrules`
-    - Если ни один не найден, создайте базовую запись с именем проекта и путём.
+    - If none are found, create a basic record with the project name and path.
 
-3.  **Извлечение информации**:
-    - Из прочитанных файлов извлеките:
-      - Технологический стек (фреймворки, библиотеки).
-      - Правила разработки (стиль кода, тесты, деплой).
-      - Переменные окружения (если упоминаются).
-    - Также определите команды для валидации (линтеры, тесты) — можно извлечь из `package.json` или `Makefile`.
+3.  **Extracting information**:
+    - From the files read, extract:
+      - Technology stack (frameworks, libraries).
+      - Development rules (code style, tests, deployment).
+      - Environment variables (if mentioned).
+    - Also determine validation commands (linters, tests) — they can be extracted from `package.json` or `Makefile`.
 
-4.  **Сохранение в память**:
-    - Запишите структурированную информацию о каждом проекте в память агента (например, в `MEMORY.md` или в отдельную заметку).
-    - Используйте ключ: `project:<project_name>`.
+4.  **Saving to memory**:
+    - Write structured information about each project to agent memory (e.g., in `MEMORY.md` or a separate note).
+    - Use the key: `project:<project_name>`.
 
-5.  **Обновление**:
-    - Вызывайте этот навык периодически (например, раз в час) или по команде пользователя (`/project discover`).
+5.  **Updating**:
+    - Call this skill periodically (e.g., once an hour) or on user command (`/project discover`).
 
-## Инструменты
+## Tools
 - `read_file`, `search_files`
 - `memory_write`
 
-## Ограничения
-- Не изменяйте файлы проектов — только читайте.
-- Если проект уже есть в памяти, обновляйте информацию только если она изменилась (можно проверять по дате изменения `AGENTS.md`).
+## Limitations
+- Do not modify project files — read only.
+- If the project is already in memory, update the information only if it changed (can be checked by the modification date of `AGENTS.md`).

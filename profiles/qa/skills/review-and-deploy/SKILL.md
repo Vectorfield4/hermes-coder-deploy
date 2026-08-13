@@ -5,27 +5,27 @@ license: MIT
 metadata:
   hermes:
     tags: [qa, ci, deploy]
-    related_skills: [qa-loop, resolve-merge-conflict, deploy-ftp]
+    related_skills: [execute-qa-task, resolve-merge-conflict, deploy-ftp]
 ---
 
 # Review and Deploy
 
 ## Overview
-This skill is called by `qa-loop` to verify the CI status of a PR, merge it, and deploy the changes. It assumes that CI is already set up for the project.
+This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it, and deploy the changes. It assumes that CI is already set up for the project.
 
 ## When to Use
-- This skill is called automatically by `qa-loop` for tasks in `review` status.
+- This skill is called automatically by `execute-qa-task` for tasks in `ready` status.
 - **Do not use** this skill manually.
 
 ## Instructions
 
 ### 1. Input
-- Receive `task_id` from `qa-loop`.
+- Receive `task_id` from `execute-qa-task`.
 - Extract `project` and `pr_number` from task metadata.
 
 ### 2. Get PR Number
 - If `pr_number` is not in metadata, use `gh pr list --head <branch>` to find it.
-- The branch name should be `<branch_prefix><task_id>`.
+- The branch name follows the shared convention `feature/<task_id>-<sanitized_title>` (from task metadata).
 
 ### 3. Check CI Status
 - Use `gh pr view <pr> --json statusCheckRollup` to get CI status.

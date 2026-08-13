@@ -1,6 +1,6 @@
 ---
 name: command-handler
-description: Обрабатывает команды из Telegram, создаёт задачи в Kanban с автоматическим определением проекта
+description: Handles Telegram commands and creates Kanban tasks with automatic project detection
 metadata:
   hermes:
     tags: [telegram, gateway, dispatcher]
@@ -8,28 +8,28 @@ metadata:
 
 # Command Handler
 
-## Вход
-- Сообщение из Telegram (`{{ env.TELEGRAM_MESSAGE }}`)
-- ID чата (`{{ env.TELEGRAM_CHAT_ID }}`)
+## Input
+- Telegram message (`{{ env.TELEGRAM_MESSAGE }}`)
+- Chat ID (`{{ env.TELEGRAM_CHAT_ID }}`)
 
-## Доступные команды
+## Available Commands
 
-### 1. `/task <описание>`
-Создаёт задачу для оркестратора с автоматическим определением проекта.
+### 1. `/task <description>`
+Creates a task for the orchestrator with automatic project detection.
 
-**Алгоритм**:
-1. Извлечь описание из сообщения (всё после `/task`).
-2. Если описание пустое → ответить: "Пожалуйста, укажите описание задачи."
-3. Получить список проектов из памяти: memory_read(projects) Если проектов нет → `project = "default"`.
-4. Сопоставить описание с проектами:
-- Искать в описании ключевые слова: названия проектов, их алиасы, или слова "сайт", "проект", "репо" + контекст.
-- Использовать LLM для семантического анализа: "К какому проекту относится эта задача?"
-- Если найден подходящий проект → использовать его.
-- Если не найден → `project = "default"`.
-5. Определить тип задачи:
-- Если в описании есть "bug", "fix", "ошибка" → `type = "bugfix"`
-- Иначе `type = "feature"`
-6. Создать задачу в Kanban: 
+**Algorithm**:
+1. Extract the description from the message (everything after `/task`).
+2. If the description is empty → reply: "Please provide a task description."
+3. Get the project list from memory: `memory_read(projects)`. If there are no projects → `project = "default"`.
+4. Match the description against the projects:
+- Search for keywords in the description: project names, their aliases, or the words "site", "project", "repo" + context.
+- Use the LLM for semantic analysis: "Which project does this task belong to?"
+- If a matching project is found → use it.
+- If not found → `project = "default"`.
+5. Determine the task type:
+- If the description contains "bug", "fix", "error" → `type = "bugfix"`
+- Otherwise → `type = "feature"`
+6. Create a task in Kanban:
 kanban_create(
 title: "{{ description }}",
 description: "{{ description }}",
@@ -42,21 +42,21 @@ chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
 source: "telegram"
 }
 )
-7. Ответить: "✅ Задача #<id> создана для проекта **{{ project }}** и передана оркестратору."
+7. Reply: "✅ Task #<id> created for project **{{ project }}** and handed off to the orchestrator."
 
 ### 2. `/project add <url> [name]`
-Добавляет новый проект и создаёт задачу на инициализацию **напрямую для кодера**.
+Adds a new project and creates an initialization task **directly for the coder**.
 
-**Алгоритм**:
-1. Извлечь URL репозитория.
-2. Если указано имя → использовать его, иначе извлечь из URL (последняя часть без `.git`).
-3. Сохранить проект в память:
+**Algorithm**:
+1. Extract the repository URL.
+2. If a name is provided → use it, otherwise extract it from the URL (last part without `.git`).
+3. Save the project to memory:
 memory_write(projects, {
 name: "{{ project_name }}",
 url: "{{ url }}",
 added_at: "{{ timestamp }}"
 })
-4. Создать задачу на инициализацию **сразу для кодера** (минуя оркестратор):
+4. Create an initialization task **directly for the coder** (bypassing the orchestrator):
 kanban_create(
 title: "Initialize project {{ project_name }}",
 description: "Initialize project structure, install dependencies, and set up CI",
@@ -70,23 +70,22 @@ source: "telegram",
 repo_url: "{{ url }}"
 }
 )
-5. Ответить: "✅ Проект **{{ project_name }}** добавлен. Создана задача #<id> для инициализации (исполнитель: coder)."
+5. Reply: "✅ Project **{{ project_name }}** added. Created task #<id> for initialization (assignee: coder)."
 
 ### 3. `/status [id]`
-Показывает статус задачи или список всех задач.
+Shows the status of a task or a list of all tasks.
 
-**Алгоритм**:
-- Если указан ID → показать статус конкретной задачи: kanban_get_task(id) 
-- Если ID не указан → показать последние 5 задач пользователя (по `chat_id` из метаданных).
+**Algorithm**:
+- If an ID is provided → show the status of that task: `kanban_get_task(id)`
+- If no ID → show the user's last 5 tasks (by `chat_id` from metadata).
 
 ### 4. `/cancel <id>`
-Отменяет задачу (переводит в `cancelled`).
+Cancels a task (moves it to `cancelled`).
 
-**Алгоритм**:
-1. Проверить, что задача существует и принадлежит пользователю (по `chat_id`).
-2. Если можно отменить → `kanban_update(id, status: cancelled)`.
-3. Ответить: "❌ Задача #<id> отменена."
+**Algorithm**:
+1. Verify the task exists and belongs to the user (by `chat_id`).
+2. If it can be cancelled → `kanban_update(id, status: cancelled)`.
+3. Reply: "❌ Task #<id> cancelled."
 
 ### 5. `/help`
-Показывает список доступных команд.
-
+Shows the list of available commands.

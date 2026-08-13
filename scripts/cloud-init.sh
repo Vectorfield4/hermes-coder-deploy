@@ -1,38 +1,38 @@
 #!/bin/sh
 
-# Обновление системы
+# Update the system
 apt -y update
 apt -y upgrade
 
-# Установка Docker
+# Install Docker
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker root
 
-# Установка Git, Make, sqlite3
+# Install Git, Make, sqlite3
 apt -y install git make sqlite3
 
-# Клонирование репозитория
+# Clone the repository
 cd /root
 git clone https://github.com/Vectorfield4/hermes-coder-deploy.git
 cd hermes-coder-deploy
 
-# Создание .env файлов из шаблонов
+# Create .env files from templates
 make init
 
-# Настройка ежедневного бэкапа Kanban в 02:00
+# Set up a daily Kanban backup at 02:00
 (crontab -l 2>/dev/null | grep -v 'make backup'; echo "0 2 * * * cd /root/hermes-coder-deploy && make backup") | crontab -
 
 echo "=================================================="
-echo "✅ Система подготовлена!"
+echo "✅ System is ready!"
 echo ""
-echo "Теперь выполните по SSH:"
-echo "  1. Заполните секреты в файлах:"
+echo "Next steps via SSH:"
+echo "  1. Fill in the secrets in these files:"
 echo "     nano profiles/dispatcher/.env   (TELEGRAM_BOT_TOKEN)"
 echo "     nano profiles/coder/.env        (GITHUB_TOKEN, OPENAI_API_KEY, OPENAI_API_BASE)"
 echo "     nano profiles/qa/.env           (GITHUB_TOKEN, FTP_HOST, FTP_USER, FTP_PASS, OPENAI_API_KEY, OPENAI_API_BASE)"
 echo ""
-echo "  2. Запустите контейнеры:"
+echo "  2. Start the containers:"
 echo "     cd /root/hermes-coder-deploy && make up"
 echo ""
-echo "  3. Проверьте логи: make logs"
+echo "  3. Check the logs: make logs"
 echo "=================================================="

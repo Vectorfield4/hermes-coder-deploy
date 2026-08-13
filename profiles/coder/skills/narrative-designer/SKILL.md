@@ -1,44 +1,49 @@
 ---
 name: narrative-designer
-description: Проектирует нарратив и историю страницы
+description: Designs the narrative and story of the page
+metadata:
+  hermes:
+    tags: [content]
+    related_skills: [content-strategist]
 ---
 
 # Narrative Designer
 
-Твоя задача — превратить техническое задание в историю, которая будет понятна целевой аудитории.
+Your task is to turn the brief into a story that is clear to the target audience.
 
-## Инструкции
+## Instructions
 
-1. Проанализируй запрос пользователя.
+1. Analyze the user's request.
 
-2. Определи ключевые элементы нарратива:
-   - **УТП (Unique Selling Proposition)**: что делает это решение уникальным?
-   - **Целевая аудитория**: кто будет читать эту страницу?
-   - **Главная боль**: какую проблему решает продукт?
-   - **Желаемый путь пользователя**: что пользователь должен почувствовать и сделать?
+2. Define the key narrative elements:
+   - **USP (Unique Selling Proposition)**: what makes this solution unique?
+   - **Target audience**: who will read this page?
+   - **Main pain point**: what problem does the product solve?
+   - **Desired user journey**: what the user should feel and do
 
-3. Сформулируй историю в 3-5 предложениях.
+3. Write the story in 3-5 sentences.
 
-4. Сохрани результат в `artifacts/narrative.md`.
+4. Save the result to `artifacts/narrative.md`.
 
-## Пример
+## Example
 
-**Запрос**: "Сделай страницу о компьютерном зрении для ритейла"
+**Request**: "Create a page about computer vision for retail"
 
-**Результат**:
+**Result**:
 ```markdown
-# Нарратив: Компьютерное зрение для ритейла
+# Narrative: Computer Vision for Retail
 
-## УТП
-Снижение потерь на 30% за счёт автоматического учёта товаров.
+## USP
+Reduce losses by 30% through automatic inventory tracking.
 
-## Целевая аудитория
-Владельцы сетей магазинов, 50+, технологический уровень средний.
+## Target audience
+Store chain owners, 50+, average tech literacy.
 
-## Главная боль
-Товары пропадают, учёт занимает часы, кассиры ошибаются.
+## Main pain point
+Goods disappear, inventory takes hours, cashiers make mistakes.
 
-## История
-Представьте магазин, где каждая полка видит сама. Камеры, обученные на тысячах товаров,
-мгновенно замечают пустоты и ошибки выкладки. Мы даём вам контроль над каждым
-квадратным метром торгового зала без лишних людей и сложных систем.
+## Story
+Imagine a store where every shelf sees for itself. Cameras trained on thousands of products
+instantly notice gaps and mis-stocking. We give you control over every square meter of the
+sales floor without extra staff or complex systems.
+```

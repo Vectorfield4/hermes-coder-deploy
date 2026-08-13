@@ -64,6 +64,6 @@ metadata:
 - The `review-and-deploy` skill is expected to return a structured result – you may need to standardize its output format (e.g., a JSON with `status`, `message`, `details`).
 - If the task has no `rules_keys`, you can still run a generic QA, but it's highly recommended to include them for context-aware reviews.
 
-## Memory Schema (same as execute-task)
+## Memory Schema (same as execute-task, see `profiles/coder/skills/execute-task/references/memory.md`)
 - Index: `project_rules_{project}_index` – contains keys and hash.
 - Individual rules: `project_rules_{project}_{key}` – cached content.

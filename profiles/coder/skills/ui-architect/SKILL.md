@@ -1,29 +1,43 @@
 ---
 name: ui-architect
-description: Проектирует структуру страницы и выбирает компоненты
+description: Designs the page structure and selects components
+metadata:
+  hermes:
+    tags: [ui, design]
+    related_skills: [narrative-designer, content-strategist]
 ---
 
 # UI Architect
 
-Твоя задача — спроектировать структуру страницы и определить, какие компоненты использовать.
+Your task is to design the page structure and decide which components to use. Projects run on the standardized stack (React + MUI, see the project `AGENTS.md`).
 
-## Инструкции
+## Instructions
 
-1. Прочитай `artifacts/narrative.md` и `artifacts/content-plan.md`.
+1. Read `artifacts/narrative.md` and `artifacts/content-plan.md`.
 
-2. Определи структуру страницы (секции сверху вниз):
-   - Шапка (Header) — логотип, навигация
-   - Hero — главный блок
-   - Секция 1, 2, 3... — контентные блоки
-   - Футер (Footer)
+2. Load the stack references via `skill_view` for the design decisions:
+   - `references/mui.md` (component vocabulary)
+   - `references/react-router.md`, `references/zustand.md`, `references/tanstack-query.md` (architecture)
+   - `references/threejs-r3f.md` (3D insertion points)
 
-3. Для каждой секции выбери MUI-компоненты:
-   - `Container`, `Grid`, `Box` — для структуры
-   - `Typography` — для текстов
-   - `Button` — для CTA
-   - `Card` — для преимуществ
-   - `TextField`, `Select` — для форм
+3. Define the page structure (sections top to bottom):
+   - Header — logo, navigation
+   - Hero — main block
+   - Sections 1, 2, 3... — content blocks
+   - Footer
 
-4. Для 3D-сцены определи место вставки.
+4. For each section choose MUI components:
+   - `Container`, `Grid`, `Box` — for layout
+   - `Typography` — for text
+   - `Button` — for CTAs
+   - `Card` — for benefits
+   - `TextField`, `Select` — for forms
 
-5. Сохрани результат в `artifacts/design-spec.md`.
+5. Define the architecture:
+   - Routes (React Router)
+   - Global state (Zustand)
+   - API/data fetching (TanStack Query)
+
+6. Determine where to insert the 3D scene (Three.js / React Three Fiber).
+
+7. Save the result to `artifacts/design-spec.md`.

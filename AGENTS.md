@@ -38,11 +38,14 @@ On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash
 ## Editing skills
 
 - Skill = `SKILL.md` with YAML frontmatter: `name` (must match the folder), `description`, `license`, optional `metadata.hermes.tags` / `related_skills`.
-- **Language convention:** README and most `dispatcher`/`qa` skills are in Russian; `coder` skills are mostly English. Match the existing language of the file you edit; keep skill bodies English or Russian consistently.
+- **Language convention:** all documentation and skills are written in English.
 - Adding a new profile requires touching all of: new `profiles/<name>/` (config.yaml, .env.example, skills/), a service block in `docker-compose.yml`, and the loop in `scripts/init.sh`.
 
 ## Kanban conventions (referenced throughout skills)
 
+- The frontend stack is **standardized** and installed by `project-init`: React + React Router + Zustand + TypeScript + Vite + MUI + React Hook Form + Zod + TanStack Query + GSAP + Three.js/R3F + Vitest + MSW + Biome + Storybook (full table in README). All coder skills must target this stack only (e.g. no Tailwind, no ESLint/Prettier). `setup-ci` builds against it (`npm run lint` / `npm run test` / `npm run build`).
+- AI models are not fixed globally: each profile sets a default model in `config.yaml`, and every skill invocation may specify a model.
+- `project-init` writes an `AGENTS.md` into the project repo listing the stack, commands, and the Hermes skills that apply to it.
 - Tasks carry `metadata.project`, `assignee` (role name: `orchestrator` / `coder` / `qa`), `chat_id`, and a `type` (`feature` / `bugfix` / `init` / `ui` / `content` / `integration`).
 - The loops pick up tasks with status `ready`. Statuses in use are `ready`, `blocked`, `done`, `cancelled` (`/cancel`); the old `coding`/`review`/`qa` intermediate states are gone.
 - Orchestration pattern (`orchestrate-task`): parent task (`assignee: orchestrator`, `ready`) is decomposed into component sub-tasks (`metadata.component: true`, `assignee: coder`, `ready`) plus one final PR task (`metadata.pr_creation: true`, `status: blocked`), all linked via `kanban_link`; the PR task is dependency-blocked on the components (`kanban_link --block`) and becomes `ready` once all are `done`. `orchestrate-task` runs once per task and never polls.

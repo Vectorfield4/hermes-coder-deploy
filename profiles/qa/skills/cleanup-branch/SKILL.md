@@ -1,12 +1,12 @@
 ---
 name: cleanup-branch
-description: Удаление локальной и удалённой ветки.
+description: Deletes the local and remote branch.
 ---
 
 # Cleanup Branch
 
-1. Проверить существование ветки `feature/hermes-<task_id>`.
-2. Переключиться на другую ветку (например, `main`).
-3. Удалить локальную ветку: `git branch -d feature/hermes-<task_id>`.
-4. Удалить удалённую ветку: `git push origin --delete feature/hermes-<task_id>`.
-5. Добавить комментарий к задаче: "Ветка удалена".
+1. Get the branch name from the task metadata: `feature/<task_id>-<sanitized_title>`.
+2. Switch to another branch (e.g., `main`).
+3. Delete the local branch: `git branch -d feature/<task_id>-<sanitized_title>`.
+4. Delete the remote branch: `git push origin --delete feature/<task_id>-<sanitized_title>`.
+5. Add a task comment: "Branch deleted".

@@ -21,7 +21,7 @@ metadata:
 
 2. **Load project rules from memory (cached)**
    - Extract from `metadata`:
-     - `rules_keys` – list of rule keys needed (same as in execute-task, e.g., `["testing-patterns", "review-standards"]`)
+     - `rules_keys` – list of rule keys needed (`["testing-patterns", "review-standards", ..]`)
      - `rules_hash` – version stamp from orchestrator
    - For each key in `rules_keys`:
      - Call `memory_read(project_rules_{project}_{key})`.
@@ -59,18 +59,11 @@ metadata:
    - Do not poll or loop – this skill runs once per task.
 
 ## Important Notes
-- This skill assumes the workspace is available at `/workspace/<project>`.
-- The `pr_url` should be present in metadata (set by the PR creation task). If missing, block with "No PR URL provided".
+- Workspace is available at `/workspace/<project>`.
+- The `pr_url` should be present in metadata. If missing, block with "No PR URL provided".
 - The `review-and-deploy` skill is expected to return a structured result – you may need to standardize its output format (e.g., a JSON with `status`, `message`, `details`).
 - If the task has no `rules_keys`, you can still run a generic QA, but it's highly recommended to include them for context-aware reviews.
 
 ## Memory Schema (same as execute-task)
 - Index: `project_rules_{project}_index` – contains keys and hash.
 - Individual rules: `project_rules_{project}_{key}` – cached content.
-
-## Comparison with old qa-loop
-- Removed internal polling – now triggered by `hermes kanban work --loop`.
-- Replaced `kanban_list` with single-task processing.
-- Added memory-cached rules for context.
-- Added `skill_discover` for flexibility.
-- Added clear branching for success/needs-fixes/failure.

@@ -9,13 +9,13 @@ Deployment + instruction repo for a 4-container Hermes system (`nousresearch/her
 - `profiles/<profile>/` — one dir per agent role:
   - `config.yaml` — model settings (DeepSeek: `deepseek-chat` / `deepseek-reasoner`)
   - `.env.example` — required secrets template; real `.env` is gitignored
-  - `skills/<skill-name>/SKILL.md` — one skill per folder (no `cron/` — see below)
+  - `skills/<skill-name>/SKILL.md` — one skill per folder
 - `scripts/` — `init.sh`, `backup.sh`, `cloud-init.sh` (all bash)
 - `docker-compose.yml` — 4 services sharing one `hermes-data` volume
 
-## How the system runs (important)
+## How the system runs
 
-- Loops are NOT cron files anymore. Each worker container runs `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5`; the Telegram gateway runs `hermes gateway run --profile dispatcher --skill command-handler --gateway telegram`. Service/role/skill wiring lives only in `docker-compose.yml`.
+- Each worker container runs `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5`; the Telegram gateway runs `hermes gateway run --profile dispatcher --skill command-handler --gateway telegram`. Service/role/skill wiring lives only in `docker-compose.yml`.
   - `dispatcher` → role `orchestrator`, skill `orchestrate-task` (decomposes tasks into component sub-tasks, coordinates one shared feature branch + final PR task)
   - `coder` → role `developer`, skill `execute-task`, flag `--skip_context_files` (executes components or creates the PR)
   - `qa` → role `qa`, skill `execute-qa-task` (runs review-and-deploy)
@@ -47,8 +47,8 @@ On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash
 - AI models are not fixed globally: each profile sets a default model in `config.yaml`, and every skill invocation may specify a model.
 - `project-init` writes an `AGENTS.md` into the project repo listing the stack, commands, and the Hermes skills that apply to it.
 - Tasks carry `metadata.project`, `assignee` (role name: `orchestrator` / `coder` / `qa`), `chat_id`, and a `type` (`feature` / `bugfix` / `init` / `ui` / `content` / `integration` / `review` / `deploy`).
-- The loops pick up tasks with status `ready`. Statuses in use are `ready`, `blocked`, `done`, `cancelled` (`/cancel`); the old `coding`/`review`/`qa` intermediate states are gone.
+- The loops pick up tasks with status `ready`. Statuses in use are `ready`, `blocked`, `done`, `cancelled` (`/cancel`).
 - Orchestration pattern (`orchestrate-task`): parent task (`assignee: orchestrator`, `ready`) is decomposed into component sub-tasks (`metadata.component: true`, `assignee: coder`, `ready`) plus one final PR task (`metadata.pr_creation: true`, `status: blocked`), all linked via `kanban_link`; the PR task is dependency-blocked on the components (`kanban_link --block`) and becomes `ready` once all are `done`. `orchestrate-task` runs once per task and never polls.
 - Coder (`execute-task`) executes `component: true` tasks, the `pr_creation: true` task, or `type: review` fix loops; after a PR is created it hands off to QA via a `type: review` task (`assignee: qa`, `ready`). QA (`execute-qa-task`) dispatches on task type: `type: review` runs `review-and-deploy` (CI → merge to `main` → Vercel staging via `deploy-vercel`) and ends in `done` (success — merge + staging deploy), `ready` back to coder at high priority (needs fixes, `execute-task` routes to `references/review-fix.md`), or `blocked` (failure); `type: deploy` (created by the Telegram `/deploy` command) runs `deploy-ftp` on `main` and ends in `done` or `blocked`. The review task loops coder ↔ QA until QA passes. Production FTP deploy happens only via `/deploy` — merged PRs never FTP-deploy.
 - PR branch convention: `feature/<task_id>-<sanitized_title>`, shared by all component sub-tasks.
-- Project rules are cached in agent memory per git hash (`rules_hash` in metadata, e.g. `project_<name>_rules_<key>` with `metadata.hash`); `--skip_context_files` on the coder is intentional to avoid memory overload — keep it.
+- Project rules are cached in agent memory per git hash (`rules_hash` in metadata, e.g. `project_<name>_rules_<key>` with `metadata.hash`); `--skip_context_files` on the coder avoids memory overload.

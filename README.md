@@ -39,9 +39,9 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 
 ## 🔄 How loops work
 
-There are no cron schedules anymore. Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
+Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
 
-**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and merges to `main` → Vercel staging deploy. Production FTP deploy is manual: `/deploy` in Telegram.
+**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and merges to `main` → Vercel staging deploy.
 
 ## 🧱 Core stack (installed by `project-init`)
 
@@ -63,7 +63,7 @@ The stack is standardized and installed automatically by `project-init` (a `type
 | **React Three Fiber** | React wrapper for Three.js |
 | **Jest / Vitest** | Testing |
 | **MSW (Mock Service Worker)** | API mocking for tests |
-| **Biome** | Linter + Formatter (replaces ESLint + Prettier) |
+| **Biome** | Linter + Formatter |
 | **Storybook** | Component documentation and isolation |
 
 - The stack is set up by the **project-init** and **setup-ci** skills; all coder component skills (ui-architect, ui-implementer, threejs-scene-builder, integration-specialist, content-strategist, narrative-designer, simple-task-executor, technical-planner) target only this stack.

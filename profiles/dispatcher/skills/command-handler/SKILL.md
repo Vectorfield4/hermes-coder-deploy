@@ -89,3 +89,31 @@ Cancels a task (moves it to `cancelled`).
 
 ### 5. `/help`
 Shows the list of available commands.
+
+### 6. `/deploy <description>`
+Creates a deploy task for QA that runs the production FTP deploy on the current `main`.
+
+**Algorithm**:
+1. Extract the description from the message (everything after `/deploy`).
+2. If the description is empty → reply: "Please provide a project name or description."
+3. Determine the project (same logic as `/task`):
+   - `memory_read(projects)`; if there are no projects → `project = "default"`.
+   - Match the description against the projects (keywords / LLM semantic analysis).
+   - If a match is found → use it; otherwise `project = "default"`.
+4. Create the deploy task in Kanban:
+kanban_create(
+title: "Deploy: {{ project }}",
+description: "Run the production FTP deploy for project {{ project }} on branch main.",
+assignee: qa,
+status: ready,
+metadata: {
+project: "{{ project }}",
+type: "deploy",
+branch: "main",
+chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
+source: "telegram"
+}
+)
+5. Reply: "🚀 Deploy task #<id> created for project **{{ project }}**."
+
+> Note: merges to `main` already deploy to Vercel staging automatically. `/deploy` runs the FTP deploy (production) on demand.

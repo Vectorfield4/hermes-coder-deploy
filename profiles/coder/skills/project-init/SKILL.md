@@ -1,17 +1,17 @@
 ---
 name: project-init
-description: Initializes a new project on the standardized stack (React + Vite + TypeScript + MUI). Called by execute-task for `type: init` tasks.
+description: Initializes a new project on the standardized stack (React + Vite + TypeScript + MUI) and links it to Vercel for staging deploys. Called by execute-task for `type: init` tasks.
 license: MIT
 metadata:
   hermes:
-    tags: [project, init, setup]
-    related_skills: [setup-ci]
+    tags: [project, init, setup, vercel]
+    related_skills: [setup-ci, deploy-vercel]
 ---
 
 # Project Init
 
 ## Overview
-This skill is called by `execute-task` to initialize a new project. It clones the repository, scaffolds the **standardized stack** (see README of the deploy repo), installs dependencies, writes the project `AGENTS.md`, and prepares the project for development. CI setup is delegated to the `setup-ci` skill.
+This skill is called by `execute-task` to initialize a new project. It clones the repository, scaffolds the **standardized stack** (see README of the deploy repo), installs dependencies, writes the project `AGENTS.md`, links the repo to Vercel (so `deploy-vercel` can deploy it to staging), and prepares the project for development. CI setup is delegated to the `setup-ci` skill.
 
 ## When to Use
 - Automatically triggered by `execute-task` for tasks with `metadata.type == "init"` (created via the `/project add` command).
@@ -48,7 +48,7 @@ Create the following files:
 - `src/stores/useAppStore.ts` — Zustand store example.
 - `src/mocks/handlers.ts`, `src/mocks/browser.ts`, `src/test/setup.ts` — MSW setup.
 - `.storybook/main.ts`, `.storybook/preview.tsx` — Storybook configured for Vite + React.
-- `.gitignore` — `node_modules`, `dist`, `.env`.
+- `.gitignore` — `node_modules`, `dist`, `.env`, `.env.*`, `.vercel/.env*` (local env files with secrets are ignored; `.vercel/project.json` is committed — see step 7).
 
 ### 5. Create package.json with the Pinned Stack
 ```json
@@ -108,11 +108,29 @@ Create the following files:
 - Run `npm install` in the project root.
 - Ensure `package-lock.json` is generated and committed — it pins exact versions.
 
-### 7. Commit and Push
-- Commit the scaffold to the project's main branch and push.
+### 7. Link the Project to Vercel (for staging deploys)
+- Requires `VERCEL_TOKEN` in the coder profile `.env`. If it is missing, skip this step with a warning (the project can be linked later) and continue — the rest of the flow is unaffected.
+- In `/workspace/<project>`:
+  - **If `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are set** in the environment:
+    - Create `.vercel/project.json` directly:
+      ```json
+      {
+        "orgId": "<VERCEL_ORG_ID>",
+        "projectId": "<VERCEL_PROJECT_ID>"
+      }
+      ```
+    - The Vercel project must already exist in the dashboard (import the repo, or create it with `npx --yes vercel@latest project add <project> --token "$VERCEL_TOKEN"`).
+  - **Otherwise** (no IDs in the environment), link by name/remote:
+    - `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"`.
+    - If linking fails or the CLI needs interactive input (project not found), do NOT guess IDs — report back that the user must create the Vercel project and re-run `vercel link`.
+- Verify `.vercel/project.json` exists and contains `orgId` and `projectId`.
+- This file is safe to commit: it is what `deploy-vercel` (QA profile) reads to deploy this project to staging. Never commit `.vercel/.env*` or `.env.local` (they contain secrets).
 
-### 8. Set Up CI
+### 8. Commit and Push
+- Commit the scaffold (including `.vercel/project.json`) to the project's main branch and push.
+
+### 9. Set Up CI
 - Call `skill_run(setup-ci, project)` to create and push `.github/workflows/ci.yml` (`npm run lint` / `npm run test` / `npm run build`).
 
-### 9. Report Back
-- Return a success summary (cloned repo, scaffolded files, installed dependencies, CI status).
+### 10. Report Back
+- Return a success summary (cloned repo, scaffolded files, installed dependencies, Vercel link status, CI status).

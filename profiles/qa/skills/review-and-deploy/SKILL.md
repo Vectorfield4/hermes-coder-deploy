@@ -1,17 +1,17 @@
 ---
 name: review-and-deploy
-description: Checks CI status, merges the PR, and deploys the changes.
+description: Checks CI status, merges the PR to main, and deploys the changes to Vercel staging.
 license: MIT
 metadata:
   hermes:
     tags: [qa, ci, deploy]
-    related_skills: [execute-qa-task, resolve-merge-conflict, deploy-ftp]
+    related_skills: [execute-qa-task, resolve-merge-conflict, deploy-vercel]
 ---
 
 # Review and Deploy
 
 ## Overview
-This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it, and deploy the changes. It assumes that CI is already set up for the project.
+This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it to `main`, and deploy the merged code to Vercel staging. It assumes that CI is already set up for the project.
 
 ## When to Use
 - This skill is called automatically by `execute-qa-task` for tasks in `ready` status.
@@ -41,17 +41,17 @@ This skill is called by `execute-qa-task` to verify the CI status of a PR, merge
   - If the conflict is resolved, proceed with the merge.
   - If not, update task status to `ready` with a comment about the conflict.
 
-### 5. Deploy
-- After a successful merge, call `skill_run` with `deploy-ftp`.
-- If deployment succeeds:
+### 5. Deploy to Vercel staging
+- After a successful merge, call `skill_run` with `deploy-vercel` (builds `main` and creates a staging/preview deployment).
+- If the deployment succeeds:
   - Update task status to `done`.
-  - Add a comment: "Deployed successfully."
-- If deployment fails:
+  - Add a comment: "Merged to main. Vercel staging deploy: <url>"
+- If the deployment fails:
   - Update task status to `blocked` with an error description.
 
 ## Tools
 - `gh pr view`, `gh pr merge`
-- `skill_run(resolve-merge-conflict)`, `skill_run(deploy-ftp)`
+- `skill_run(resolve-merge-conflict)`, `skill_run(deploy-vercel)`
 - `memory_read` (for project context)
 
 ## Common Pitfalls
@@ -61,6 +61,6 @@ This skill is called by `execute-qa-task` to verify the CI status of a PR, merge
 ## Verification Checklist
 - [ ] PR number is retrieved.
 - [ ] CI status is checked and passes.
-- [ ] PR is merged successfully.
-- [ ] Deployment is completed.
+- [ ] PR is merged to `main` successfully.
+- [ ] Vercel staging deployment is completed.
 - [ ] Task status is updated correctly.

@@ -18,29 +18,30 @@ All services share the `hermes-data` volume (Kanban + agent memory) — it is th
 Each skill is a Markdown instruction for the agent. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
 
 ### dispatcher
-- **command-handler** — handles the `/task`, `/project add`, `/status`, `/cancel`, `/help` commands from Telegram; creates tasks for the orchestrator (or directly for the coder on `/project add`).
+- **command-handler** — handles the `/task`, `/project add`, `/status`, `/cancel`, `/deploy`, `/help` commands from Telegram; creates tasks for the orchestrator (or directly for the coder on `/project add`).
 - **orchestrate-task** — decomposes a task into component sub-tasks (UI / content / integration), coordinates a single shared branch `feature/<task_id>-<title>` and a final PR task.
 
 ### coder
 - **execute-task** — executes a single component sub-task (`component: true`), initializes projects (`type: init`), aggregates changes and creates a PR (`pr_creation: true`, then hands off to QA), or fixes QA findings (`type: review`).
 - **create-pr** — validation (lint/tests), commit, push of the branch, PR creation.
-- **project-init** / **setup-ci** — project initialization (for `type: init` tasks).
+- **project-init** / **setup-ci** — project initialization (for `type: init` tasks). `project-init` also links the repo to Vercel (`VERCEL_TOKEN`) so staging deploys work out of the box.
 - **project-discover** — scans `/workspace`, reads project context (`AGENTS.md`, `.hermes.md`, etc.).
 - **frontend-stack** — reference hub for the standardized stack; `references/` has a distilled page per library (React, React Router, Zustand, TypeScript, Vite, MUI, React Hook Form, Zod, TanStack Query, GSAP, Three.js/R3F, Vitest, MSW, Biome, Storybook). Loaded by the component skills via `skill_view` when writing code.
 - Specialized: **ui-architect**, **ui-implementer**, **content-strategist**, **integration-specialist**, **technical-planner**, **narrative-designer**, **simple-task-executor**, **threejs-scene-builder**.
 
 ### qa
-- **execute-qa-task** — runs the review task (`type: review`): invokes `review-and-deploy`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The task loops coder ↔ QA until QA passes.
-- **review-and-deploy** — checks CI (waits up to 10 min), code review, merge (squash), deploy.
+- **execute-qa-task** — dispatches on task type: `type: deploy` runs `deploy-ftp`; `type: review` runs `review-and-deploy`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The review task loops coder ↔ QA until QA passes.
+- **review-and-deploy** — checks CI (waits up to 10 min), code review, merge (squash) to `main`, then deploys to Vercel staging via `deploy-vercel`.
+- **deploy-vercel** — builds `main` and creates a Vercel staging/preview deployment using the Vercel CLI. Each project carries its link in `.vercel/project.json`; only `VERCEL_TOKEN` is needed in the QA profile.
+- **deploy-ftp** — production FTP deploy of `main`, triggered on demand by the `/deploy` command.
 - **resolve-merge-conflict** — automatic conflict resolution via `git merge --strategy-option theirs`.
 - **cleanup-branch** — deletes the branch after completion.
-- **deploy-ftp** — builds the project and uploads it to FTP.
 
 ## 🔄 How loops work
 
 There are no cron schedules anymore. Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
 
-**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and deploys → `done`.
+**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and merges to `main` → Vercel staging deploy. Production FTP deploy is manual: `/deploy` in Telegram.
 
 ## 🧱 Core stack (installed by `project-init`)
 
@@ -70,6 +71,19 @@ The stack is standardized and installed automatically by `project-init` (a `type
 - AI models are not fixed globally: each profile defines a default model in `config.yaml`, and any skill invocation may specify a specific model.
 
 ## 🚀 Deployment
+
+### Vercel staging
+
+Every PR merged by QA to `main` is automatically deployed to Vercel staging by the `deploy-vercel` skill. `project-init` links a new project to Vercel automatically when `VERCEL_TOKEN` is set in the coder profile. Setup:
+
+1. Create a Vercel token (`VERCEL_TOKEN`) under Account → Tokens and set it in `profiles/coder/.env` (for `project-init`) and `profiles/qa/.env` (for `deploy-vercel`).
+2. Ensure the Vercel project exists (import the repo in the dashboard, or `npx vercel project add <name>`).
+3. On `/project add`, `project-init` links the repo and commits `.vercel/project.json` (orgId + projectId). To link manually later: `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"` in the project and commit `.vercel/project.json`.
+4. `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` in the profile `.env` files are an optional shortcut: when set, `project-init` writes `.vercel/project.json` directly (no CLI linking needed).
+
+### Production FTP (on demand)
+
+Run `/deploy <project>` in Telegram → QA runs `deploy-ftp` (builds `main`, uploads to FTP). Requires `FTP_HOST`, `FTP_USER`, `FTP_PASS` in `profiles/qa/.env`.
 
 ### Option 1: Automatic cloud-init (recommended)
 

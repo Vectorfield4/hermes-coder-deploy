@@ -1,4 +1,4 @@
-.PHONY: init up down logs backup
+.PHONY: init up down logs backup memory-bootstrap update-profiles
 
 init:
 	bash scripts/init.sh
@@ -14,6 +14,9 @@ logs:
 
 backup:
 	bash scripts/backup.sh
+
+memory-bootstrap:
+	bash scripts/memory-bootstrap.sh
 
 update-profiles:
 	docker compose exec dispatcher hermes profile update dispatcher

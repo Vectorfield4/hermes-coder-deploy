@@ -10,8 +10,11 @@ Multi-agent development system built on Hermes Agent, orchestrating work through
 | **coder** | coder | `developer` | `hermes kanban work --loop --skip_context_files` | `execute-task` |
 | **qa** | qa | `qa` | `hermes kanban work --loop` | `execute-qa-task` |
 | **telegram-bot** | dispatcher | — | `hermes gateway run --gateway telegram` | `command-handler` |
+| **memory-db** | — | — | PostgreSQL + pgvector | durable memory store |
+| **embedding** | — | — | TEI `all-MiniLM-L6-v2` (port 8081) | embeddings for RAG |
+| **dense-mem** | — | — | MCP memory server (`:8080/mcp`, control portal `:8090`) | RAG E-pool |
 
-All services share the `hermes-data` volume (Kanban + agent memory) — it is the only coordination channel.
+All services share the `hermes-data` volume (Kanban + agent memory) — it is the only coordination channel. Workers start only after `dense-mem` is healthy.
 
 ## 🧠 Skills
 
@@ -42,6 +45,18 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
 
 **Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and merges to `main` → Vercel staging deploy.
+
+## 🧠 Memory layer (RAG E-pool via dense-mem)
+
+All three workers (and the Telegram gateway) connect to the **dense-mem** MCP server through `mcp_servers.dense_mem` in each profile's `config.yaml`. Hermes exposes its tools as `mcp_dense_mem_*` (e.g. `mcp_dense_mem_recall_memory`).
+
+- **Recall before executing**: the dispatcher recalls similar past plans before decomposing (`orchestrate-task` step 4); the coder recalls patterns before implementing a component (`execute-task` → `references/rag.md`); QA can recall known pitfalls before reviewing.
+- **Remember after success**: the coder stores a compressed summary after a completed component; QA stores verified/high-confidence evidence after a review passes.
+- **Rules cache (project rules)**: the orchestrator extracts `AGENTS.md` / `SOUL.md` into tagged `project-rules:<project>` records in the E-pool (index + per-key), keyed by `rules_hash` carried in task metadata. Coder/QA recall the rules via `references/memory.md`; the disk files are the deterministic fallback. Rule records are authoritative over experience.
+- **Correct on failure**: the coder traces and retires its own wrong evidence during the fix loop; dense-mem enforces ownership (a profile can only correct/retract its own submissions).
+- Rules cache (AGENTS.md / SOUL.md) is authoritative; E-pool is advisory. Recalled templates still must pass validation. **Every memory call is best-effort and never blocks a task.**
+
+Stack (in `docker-compose.yml`): `memory-db` (PostgreSQL + pgvector, durable store) → `embedding` (TEI, `all-MiniLM-L6-v2`, 384-dim) → `dense-mem` (MCP server + control portal). Infra secrets live in the root `.env`; per-worker profile API keys (`DENSE_MEM_API_KEY`) are created via `scripts/memory-bootstrap.sh`.
 
 ## 🧱 Core stack (installed by `project-init`)
 
@@ -90,11 +105,15 @@ Run `/deploy <project>` in Telegram → QA runs `deploy-ftp` (builds `main`, upl
 1. In the Timeweb Cloud panel, when creating a server, find the **"Cloud-init"** field (Configuration tab).
 2. Copy the contents of `cloud-init.sh` from this repository and paste it into the field.
 3. Create the server.
-4. Once the server has booted, connect via SSH and fill in the secrets (as shown in the cloud-init message).
+4. Once the server has booted, connect via SSH and fill in the secrets (as shown in the cloud-init message): the root `.env` (POSTGRES_PASSWORD, CONTROL_PORTAL_TOKEN, AI_VERIFIER_API_KEY) and the three `profiles/*/.env` files.
 5. Start the system with `make up`.
-6. Verify it works: `make logs`.
+6. Create the dense-mem profiles and wire the workers:
+   - `bash scripts/memory-bootstrap.sh` — creates the `hermes-coder` team + `dispatcher` / `coder` / `qa` profiles and prints an API key per profile.
+   - Paste each key into `profiles/<p>/.env` as `DENSE_MEM_API_KEY`.
+   - `docker compose up -d --force-recreate` (workers pick up the MCP credentials).
+7. Verify it works: `make logs`.
 
-The Kanban backup runs automatically every day at 02:00. Adjust the schedule via `crontab -e` if needed.
+The Kanban **and** dense-mem PostgreSQL backups run automatically every day at 02:00. Adjust the schedule via `crontab -e` if needed.
 
 ## 📦 Updating
 

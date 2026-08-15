@@ -21,9 +21,9 @@ metadata:
 
 2. **Determine task type** from `metadata`:
    - `type == "init"` → load `skill_view("execute-task", "references/init.md")` and follow it. Project rules are not loaded — the project may not exist yet.
-   - `component == true` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/component.md")` and follow it.
+   - `component == true` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/rag.md")` and run its recall procedure, then load `skill_view("execute-task", "references/component.md")` and follow it.
    - `pr_creation == true` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/pr.md")` and follow it.
-   - `type == "review"` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/review-fix.md")` and follow it. This flow is entered when QA moved the task back for fixes; `project`, `branch`, and `pr_url` come from task metadata.
+   - `type == "review"` → load `skill_view("execute-task", "references/memory.md")` and run its load procedure, then load `skill_view("execute-task", "references/rag.md")` and run its recall procedure, then load `skill_view("execute-task", "references/review-fix.md")` and follow it. This flow is entered when QA moved the task back for fixes; `project`, `branch`, and `pr_url` come from task metadata.
    - Otherwise → `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "Unknown task type"`.
 
 ## Conventions (all flows)
@@ -33,3 +33,4 @@ metadata:
 - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "<summary>"` — see the loaded flow for the exact comment.
 - The workspace is at `/workspace/<project>`; the branch is shared across all component tasks.
 - Start the coder agent with `--skip_context_files` to avoid overloading the global memory.
+- Experience memory (E-pool via dense-mem, see `references/rag.md`): recall before executing, remember after success. Memory tools are exposed as `mcp_dense_mem_*`; a failed memory call must never block the task.

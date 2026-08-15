@@ -16,20 +16,25 @@ Loaded by `execute-task` when QA moved the task back to the coder for fixes. The
    - Extract the issues from the description / latest comment.
    - If no findings can be extracted → `kanban_block` with "No QA findings in task".
 
-3. **Apply fixes**
+3. **Check whether a recalled pattern caused the issue**
+   - If the failing code came from an E-pool recall, trace its provenance with `mcp_dense_mem_trace_memory(...)`.
+   - If you (coder profile) previously stored evidence that proved wrong, retire it best-effort with `mcp_dense_mem_retract_evidence(...)` (or `mcp_dense_mem_correct_relationship`) so it is not recalled again.
+   - This is best-effort and must never block the fix.
+
+4. **Apply fixes**
    - Check out `branch` in `/workspace/<project>`.
    - Fix each reported issue.
    - Follow the project `AGENTS.md` and the relevant `frontend-stack` reference via `skill_view("frontend-stack", "references/<file>.md")` when touching UI, data, or tests.
    - Call `kanban_heartbeat` before long operations.
 
-4. **Validate**
+5. **Validate**
    - Run project validation (lint / test / build) per cached rules or `AGENTS.md`.
    - If validation fails → fix and re-run; do not push broken code.
 
-5. **Push the fixes**
+6. **Push the fixes**
    - Commit and push to the same `branch` (updates the existing PR).
 
-6. **Hand back to QA**
+7. **Hand back to QA**
    - Move the task to QA with priority so it is reviewed again:
      `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee qa --comment "Fixed: <summary of changes>"`
    - Do **not** `kanban_complete` — the task stays in the review loop until QA passes.

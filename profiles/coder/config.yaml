@@ -5,3 +5,10 @@ max_tokens: 4096
 top_p: 0.9
 delegation:
   model: deepseek/deepseek-chat
+mcp_servers:
+  dense_mem:
+    url: "http://dense-mem:8080/mcp"
+    headers:
+      Authorization: "Bearer ${DENSE_MEM_API_KEY}"
+    tools:
+      include: [remember, get_submission_status, recall_memory, trace_memory]

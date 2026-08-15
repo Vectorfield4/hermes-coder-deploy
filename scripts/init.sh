@@ -5,6 +5,13 @@ echo "📁 Creating directories..."
 mkdir -p data workspace backups
 
 echo "🔐 Creating .env files from examples..."
+if [ ! -f ".env" ]; then
+    cp ".env.example" ".env"
+    echo "✅ .env created"
+else
+    echo "⏭️  .env already exists"
+fi
+
 for profile in dispatcher coder qa; do
     if [ ! -f "profiles/$profile/.env" ]; then
         cp "profiles/$profile/.env.example" "profiles/$profile/.env"
@@ -15,4 +22,4 @@ for profile in dispatcher coder qa; do
 done
 
 echo "✅ Initialization complete."
-echo "📝 Edit the .env files in profiles/*/ and run: docker compose up -d"
+echo "📝 Edit the .env files (root, profiles/*/) and run: docker compose up -d"

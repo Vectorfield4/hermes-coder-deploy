@@ -3,3 +3,10 @@ model: deepseek-chat
 temperature: 0.3
 max_tokens: 1024
 top_p: 0.9
+mcp_servers:
+  dense_mem:
+    url: "http://dense-mem:8080/mcp"
+    headers:
+      Authorization: "Bearer ${DENSE_MEM_API_KEY}"
+    tools:
+      include: [recall_memory, trace_memory, remember, get_submission_status, retract_evidence]

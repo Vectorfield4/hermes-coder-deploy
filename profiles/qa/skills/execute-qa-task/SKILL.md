@@ -29,23 +29,22 @@ metadata:
 
 ## Review Pipeline
 
-3. **Load project rules from memory (cached)**
+3. **Load project rules from the RAG cache (E-pool)**
    - Extract from `metadata`:
      - `rules_keys` – list of rule keys needed (`["testing-patterns", "review-standards", ..]`)
      - `rules_hash` – version stamp from orchestrator
    - For each key in `rules_keys`:
-     - Call `memory_read(project_rules_{project}_{key})`.
-     - If not found OR hash mismatch:
-       - Read `/workspace/<project>/AGENTS.md` and `/workspace/<project>/SOUL.md`.
-       - Extract the relevant section for this key.
-       - Call `memory_replace(project_rules_{project}_{key}, <extracted_rule>, metadata: {hash: <new_hash>})`.
-       - Use the rule in current context.
-   - If `rules_keys` is empty → load only essential QA guidelines from memory or fallback to generic.
+     - Recall the rule record: `mcp_dense_mem_recall_memory(query="project rules for <project>: <key>", filter={tags: ["project-rules:<project>", "rules:<key>"]} where the tool supports filters)`.
+     - If found AND its `rules_hash` claim equals `rules_hash` → use it.
+     - If not found OR mismatch → read `/workspace/<project>/AGENTS.md` and `/workspace/<project>/SOUL.md` and extract the relevant section directly (deterministic fallback).
+     - Do **not** write rule records from the QA profile (rules are owned by the orchestrator).
+   - If `rules_keys` is empty → load essential QA guidelines from `AGENTS.md` or fallback to generic.
 
 4. **Run the QA pipeline**
    - **Step 4.1**: Call `skill_discover("review-and-deploy")` to find the appropriate skill.
    - If found: call `skill_run(review-and-deploy, project, branch, pr_url, rules_context)`.
    - If not found: fallback to a generic QA skill (or block with "Missing QA skill").
+   - **Step 4.2 (optional, best-effort)**: call `mcp_dense_mem_recall_memory(query="<review focus, e.g. known pitfalls for <project> or the component type>")` and consider past failure patterns during the review. On failure or empty results, continue without it.
    - The `review-and-deploy` skill should:
      - Run automated tests (linting, unit, integration).
      - Perform code review (static analysis, security checks, adherence to guidelines).
@@ -54,11 +53,13 @@ metadata:
 
 5. **Handle the result**
    - **If `review-and-deploy` returns SUCCESS**:
-     - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "QA passed. Merged to main and deployed to Vercel staging."`
-     - Optionally, notify via Telegram (but that's out of scope).
+      - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "QA passed. Merged to main and deployed to Vercel staging."`
+      - Then, best-effort, store a VERIFIED experience summary via `mcp_dense_mem_remember(...)` (concise evidence of what passed review + key decisions; mark high confidence / "verified by QA"). Fire-and-forget — never block completion on memory writes.
+      - Optionally, notify via Telegram (but that's out of scope).
    - **If `review-and-deploy` returns NEEDS_FIXES** (minor issues, comments):
-      - Move the task back to the coder as **high priority** so the coder loop picks it up next:
-      - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"` where the board supports it.
+       - Move the task back to the coder as **high priority** so the coder loop picks it up next:
+       - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"` where the board supports it.
+       - If a wrong pattern was likely replayed from the E-pool, say so in the comment so the coder can trace and retire its own evidence during the fix loop (see `execute-task` reference `rag.md`). You can only correct/retract evidence your own QA profile submitted; coder-owned evidence is fixed by the coder.
    - **If `review-and-deploy` returns FAILURE** (critical errors, deployment failure, CI crash):
      - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "QA failed: <error details>"`.
      - Optionally, notify the team.
@@ -75,6 +76,13 @@ metadata:
 - The `review-and-deploy` skill is expected to return a structured result – you may need to standardize its output format (e.g., a JSON with `status`, `message`, `details`).
 - If the task has no `rules_keys`, you can still run a generic QA, but it's highly recommended to include them for context-aware reviews.
 
-## Memory Schema (same as execute-task, see `profiles/coder/skills/execute-task/references/memory.md`)
-- Index: `project_rules_{project}_index` – contains keys and hash.
-- Individual rules: `project_rules_{project}_{key}` – cached content.
+## Rules cache (project rules via RAG E-pool, same as `execute-task` → `references/memory.md`)
+- Rules are stored by the orchestrator (dispatcher profile) in dense-mem, tagged `project-rules:<project>` (+ `rules:<key>` per rule, `rules-index` for the index record).
+- `rules_hash` in task metadata invalidates the cache; disk `AGENTS.md` / `SOUL.md` is the deterministic fallback.
+- Tagged rules records are authoritative over untagged experience records.
+
+## Experience memory (E-pool via dense-mem)
+- Tools are exposed as `mcp_dense_mem_*` (server `dense_mem` in `config.yaml`).
+- Tagged rules records (`project-rules:<project>`) are authoritative; untagged experience records are advisory only.
+- All memory calls are best-effort: on failure, continue the task without memory.
+- Ownership: dense-mem lets a profile correct/retract only its own submitted evidence.

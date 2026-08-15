@@ -8,7 +8,13 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Use `metadata.type` if present (ui, content, integration).
    - Else, infer from `title`/`description`.
 
-2. **Invoke the right skill**
+2. **Recall related experience (RAG E-pool)**
+   - If `references/rag.md` is not loaded yet, load it via `skill_view("execute-task", "references/rag.md")`.
+   - Follow its recall procedure: call `mcp_dense_mem_recall_memory(query="<concise goal of this component>")`.
+   - Pass relevant recalled patterns/decisions into the skill call as advisory context.
+   - Graceful degradation: on MCP failure or empty results, continue without recalled context.
+
+3. **Invoke the right skill**
    - Route by the explicit type → skill map below. The map is **authoritative**: `skill_discover(type)` alone is ambiguous because several skills share the `ui` / `content` tags (e.g. `ui` matches `ui-implementer`, `ui-architect`, `simple-task-executor`, `threejs-scene-builder`).
    - Type-to-skill mapping (standardized stack, see project `AGENTS.md`):
      - `ui` → `ui-implementer` (or `simple-task-executor` for quick forms/tables)
@@ -27,6 +33,7 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Then call `kanban_heartbeat`.
    - Each skill should write changes to `/workspace/<project>` on the given `branch`.
 
-3. **Complete the component task**
+4. **Complete the component task**
    - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "Component implemented."`
+     - Then store the outcome as experience (best-effort): follow the `remember` procedure in `references/rag.md` — a concise summary of what was implemented and the key decisions. Do not block task completion on memory writes.
    - On failure: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`

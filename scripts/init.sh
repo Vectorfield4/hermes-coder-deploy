@@ -2,24 +2,62 @@
 set -e
 
 echo "📁 Creating directories..."
-mkdir -p data workspace backups
+mkdir -p workspace backups secrets
 
-echo "🔐 Creating .env files from examples..."
-if [ ! -f ".env" ]; then
-    cp ".env.example" ".env"
-    echo "✅ .env created"
-else
-    echo "⏭️  .env already exists"
+echo "🔐 Creating empty secret placeholder files in secrets/ (never overwrites existing)..."
+for name in \
+  telegram_bot_token \
+  github_token \
+  vercel_token \
+  vercel_org_id \
+  vercel_project_id \
+  ftp_host \
+  ftp_user \
+  ftp_pass \
+  openai_api_key \
+  dense_mem_dispatcher \
+  dense_mem_coder \
+  dense_mem_qa \
+  postgres_password \
+  control_portal_token \
+  ai_verifier_api_key; do
+  if [ ! -f "secrets/$name" ]; then
+    : > "secrets/$name"
+  fi
+done
+chmod 600 secrets/*
+
+if [ ! -f "secrets/README.md" ]; then
+  cat > "secrets/README.md" <<'EOF'
+# secrets/
+
+All secrets live here as plain files, one value per file (no comments inside —
+the whole file content IS the value, trailing newline is stripped).
+
+Map (see docker-compose.yml `secrets:`):
+
+| File                      | Required | Used by            | Value                                  |
+|---------------------------|----------|--------------------|----------------------------------------|
+| telegram_bot_token        | yes      | dispatcher, telegram-bot | Telegram bot token             |
+| github_token              | yes      | coder, qa          | GitHub PAT                              |
+| vercel_token              | yes      | coder, qa          | Vercel API token                        |
+| vercel_org_id             | optional | coder, qa          | Vercel org id (legacy link shortcut)    |
+| vercel_project_id         | optional | coder, qa          | Vercel project id (legacy link shortcut)|
+| ftp_host / ftp_user / ftp_pass | yes (prod FTP) | qa        | FTP credentials for `/deploy`          |
+| openai_api_key            | yes      | all workers        | DeepSeek API key                        |
+| dense_mem_dispatcher      | yes      | dispatcher, telegram-bot | dense-mem profile key, created by `bash scripts/memory-bootstrap.sh` |
+| dense_mem_coder           | yes      | coder              | same                                   |
+| dense_mem_qa              | yes      | qa                 | same                                   |
+| postgres_password         | yes      | memory-db, dense-mem | PostgreSQL password                 |
+| control_portal_token      | yes      | dense-mem, memory-bootstrap.sh | dense-mem control portal token |
+| ai_verifier_api_key       | yes      | dense-mem          | DeepSeek API key (fact verification)    |
+
+Fill each file with `printf '%s' '<value>' > secrets/<name>`. Compose mounts
+them into `/run/secrets/<name>`; `scripts/load-secrets.sh` (inside the
+containers) maps `VAR_FILE` back to `VAR`.
+EOF
+  echo "✅ secrets/README.md created"
 fi
 
-for profile in dispatcher coder qa; do
-    if [ ! -f "profiles/$profile/.env" ]; then
-        cp "profiles/$profile/.env.example" "profiles/$profile/.env"
-        echo "✅ profiles/$profile/.env created"
-    else
-        echo "⏭️  profiles/$profile/.env already exists"
-    fi
-done
-
 echo "✅ Initialization complete."
-echo "📝 Edit the .env files (root, profiles/*/) and run: docker compose up -d"
+echo "📝 Fill in the files in secrets/ (see secrets/README.md), then run: docker compose up -d"

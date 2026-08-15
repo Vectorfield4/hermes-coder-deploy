@@ -109,7 +109,7 @@ Create the following files:
 - Ensure `package-lock.json` is generated and committed — it pins exact versions.
 
 ### 7. Link the Project to Vercel (for staging deploys)
-- Requires `VERCEL_TOKEN` in the coder profile `.env`. If it is missing, skip this step with a warning (the project can be linked later) and continue — the rest of the flow is unaffected.
+- Requires `VERCEL_TOKEN` in the coder container environment (injected from `secrets/vercel_token`). If it is missing, skip this step with a warning (the project can be linked later) and continue — the rest of the flow is unaffected.
 - In `/workspace/<project>`:
   - **If `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are set** in the environment:
     - Create `.vercel/project.json` directly:

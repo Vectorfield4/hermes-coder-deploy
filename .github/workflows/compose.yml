@@ -1,0 +1,29 @@
+name: compose-validation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax check
+        run: |
+          for s in scripts/*.sh; do
+            bash -n "$s" || exit 1
+          done
+          sh -n scripts/load-secrets.sh scripts/cloud-init.sh || exit 1
+
+      - name: Create dummy secrets
+        run: |
+          mkdir -p secrets
+          for f in $(sed -n 's#.*file: \./secrets/\([a-zA-Z0-9_]*\).*#\1#p' docker-compose.yml); do
+            printf 'x' > "secrets/$f"
+          done
+          test -n "$(ls -A secrets)"
+
+      - name: Validate compose config
+        run: docker compose config -q

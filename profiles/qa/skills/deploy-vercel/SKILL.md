@@ -19,7 +19,7 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 
 ## Prerequisites
 - The project is linked to Vercel and the link is committed in the repo at `/workspace/<project>/.vercel/project.json` (contains `orgId` + `projectId`).
-- `VERCEL_TOKEN` set in the QA profile `.env` (shared by all projects).
+- `VERCEL_TOKEN` available in the QA container environment (injected from `secrets/vercel_token`, shared by all projects).
 - Node.js/npm is available (required for `npx vercel`).
 
 ## Linking a project (one-time setup per project)
@@ -35,7 +35,7 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 
 ### 2. Resolve the Vercel link for this project
 - Read `/workspace/<project>/.vercel/project.json` → extract `orgId` and `projectId`.
-- Fallback (backward compatibility): if the file is missing, use `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` from the QA profile `.env`.
+- Fallback (backward compatibility): if the file is missing, use `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` from the QA container environment (injected from `secrets/vercel_org_id` / `secrets/vercel_project_id`).
 - If neither exists → return an error: "Vercel is not linked for project <project>". Do not guess.
 
 ### 3. Pull Vercel project settings

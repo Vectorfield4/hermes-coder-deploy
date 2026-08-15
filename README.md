@@ -56,7 +56,17 @@ All three workers (and the Telegram gateway) connect to the **dense-mem** MCP se
 - **Correct on failure**: the coder traces and retires its own wrong evidence during the fix loop; dense-mem enforces ownership (a profile can only correct/retract its own submissions).
 - Rules cache (AGENTS.md / SOUL.md) is authoritative; E-pool is advisory. Recalled templates still must pass validation. **Every memory call is best-effort and never blocks a task.**
 
-Stack (in `docker-compose.yml`): `memory-db` (PostgreSQL + pgvector, durable store) → `embedding` (TEI, `all-MiniLM-L6-v2`, 384-dim) → `dense-mem` (MCP server + control portal). Infra secrets live in the root `.env`; per-worker profile API keys (`DENSE_MEM_API_KEY`) are created via `scripts/memory-bootstrap.sh`.
+Stack (in `docker-compose.yml`): `memory-db` (PostgreSQL + pgvector, durable store) → `embedding` (TEI, `all-MiniLM-L6-v2`, 384-dim) → `dense-mem` (MCP server + control portal). Infra secrets live in `secrets/` (see [Secrets](#-secrets)); per-worker profile API keys (`dense_mem_<profile>`) are created via `scripts/memory-bootstrap.sh`.
+
+## 🔐 Secrets
+
+All secret values live in `secrets/` (gitignored) as one plain file per value. `make init` creates empty placeholders plus a generated `secrets/README.md` describing each file; fill them with `printf '%s' '<value>' > secrets/<name>`.
+
+- Compose declares the values in a top-level `secrets:` block and mounts each into `/run/secrets/<name>` for the services that grant it. It is a K8s Secret-like file mount, **not encrypted** — treat the host filesystem as trusted.
+- Hermes and dense-mem read env vars, not files, so every container runs `scripts/load-secrets.sh` first: for each `<NAME>_FILE` env var it `export NAME="$(cat ...)"` (Docker `*_FILE` convention). The loader fails fast if a secret file is missing.
+- `make up` runs `scripts/check-secrets.sh` first (`make check-secrets` for a standalone preflight): it fails before start if any secret file is missing or a **required** one is empty, so a fresh clone never silently starts with empty credentials. Optional secrets (`ftp_*`, `vercel_org_id`, `vercel_project_id`) may stay empty.
+- `memory-db` uses the image-native `POSTGRES_PASSWORD_FILE`; `dense-mem` gets an entrypoint wrapper around its own `/app/docker-entrypoint.sh` because that script builds `POSTGRES_DSN` from env at startup. Non-secret config (URLs, model names, `POSTGRES_USER/DB`, `AI_API_KEY=tei` dummy for the local TEI) is hardcoded in compose `environment:`.
+- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_{host,user,pass}` (only for `/deploy`), `vercel_org_id` / `vercel_project_id` (legacy link shortcut).
 
 ## 🧱 Core stack (installed by `project-init`)
 
@@ -91,27 +101,29 @@ The stack is standardized and installed automatically by `project-init` (a `type
 
 Every PR merged by QA to `main` is automatically deployed to Vercel staging by the `deploy-vercel` skill. `project-init` links a new project to Vercel automatically when `VERCEL_TOKEN` is set in the coder profile. Setup:
 
-1. Create a Vercel token (`VERCEL_TOKEN`) under Account → Tokens and set it in `profiles/coder/.env` (for `project-init`) and `profiles/qa/.env` (for `deploy-vercel`).
+1. Create a Vercel token (`VERCEL_TOKEN`) under Account → Tokens and set it in `secrets/vercel_token` (used by `project-init` in the coder and `deploy-vercel` in QA).
 2. Ensure the Vercel project exists (import the repo in the dashboard, or `npx vercel project add <name>`).
 3. On `/project add`, `project-init` links the repo and commits `.vercel/project.json` (orgId + projectId). To link manually later: `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"` in the project and commit `.vercel/project.json`.
-4. `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` in the profile `.env` files are an optional shortcut: when set, `project-init` writes `.vercel/project.json` directly (no CLI linking needed).
+4. `secrets/vercel_org_id` / `secrets/vercel_project_id` are an optional shortcut: when set, `project-init` writes `.vercel/project.json` directly (no CLI linking needed).
 
 ### Production FTP (on demand)
 
-Run `/deploy <project>` in Telegram → QA runs `deploy-ftp` (builds `main`, uploads to FTP). Requires `FTP_HOST`, `FTP_USER`, `FTP_PASS` in `profiles/qa/.env`.
+Run `/deploy <project>` in Telegram → QA runs `deploy-ftp` (builds `main`, uploads to FTP). Requires `ftp_host`, `ftp_user`, `ftp_pass` in `secrets/`.
 
 ### Option 1: Automatic cloud-init (recommended)
 
 1. In the Timeweb Cloud panel, when creating a server, find the **"Cloud-init"** field (Configuration tab).
 2. Copy the contents of `cloud-init.sh` from this repository and paste it into the field.
 3. Create the server.
-4. Once the server has booted, connect via SSH and fill in the secrets (as shown in the cloud-init message): the root `.env` (POSTGRES_PASSWORD, CONTROL_PORTAL_TOKEN, AI_VERIFIER_API_KEY) and the three `profiles/*/.env` files.
+4. Once the server has booted, connect via SSH and fill in the secrets (as shown in the cloud-init message): `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key` in `secrets/` (plus the optional `ftp_*` / `vercel_org_id` / `vercel_project_id`).
 5. Start the system with `make up`.
 6. Create the dense-mem profiles and wire the workers:
    - `bash scripts/memory-bootstrap.sh` — creates the `hermes-coder` team + `dispatcher` / `coder` / `qa` profiles and prints an API key per profile.
-   - Paste each key into `profiles/<p>/.env` as `DENSE_MEM_API_KEY`.
+   - Store each key: `printf '%s' '<api_key>' > secrets/dense_mem_<p>`.
    - `docker compose up -d --force-recreate` (workers pick up the MCP credentials).
 7. Verify it works: `make logs`.
+
+`cloud-init.sh` also enables **unattended security upgrades** (`unattended-upgrades`) and runs the stack under root's docker group (acceptable for a single-purpose VPS; the docker group is root-equivalent). Recommended hardening after boot: SSH key auth only (`PasswordAuthentication no` in `/etc/ssh/sshd_config`).
 
 The Kanban **and** dense-mem PostgreSQL backups run automatically every day at 02:00. Adjust the schedule via `crontab -e` if needed.
 
@@ -119,6 +131,6 @@ The Kanban **and** dense-mem PostgreSQL backups run automatically every day at 0
 
 The containers install profiles from this GitHub repository on startup. To ship changes:
 
-1. `git pull` on the server (updates the local clone that docker compose reads `.env`/compose/scripts from).
+1. `git pull` on the server (updates the local clone that docker compose reads compose/scripts from).
 2. `docker compose up -d --force-recreate` — for compose/script changes or a full profile reinstall.
 3. `make update-profiles` — sufficient for skill-only changes (no restart).

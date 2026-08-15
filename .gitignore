@@ -1,10 +1,11 @@
 # Secrets
 **/.env
+secrets/
 
 # Dynamic data
-data/
 workspace/
 backups/
+hermes-data/
 
 # Logs
 *.log

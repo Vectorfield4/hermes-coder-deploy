@@ -8,11 +8,10 @@ Deployment + instruction repo for a 4-container Hermes system (`nousresearch/her
 
 - `profiles/<profile>/` — one dir per agent role:
   - `config.yaml` — model settings (DeepSeek: `deepseek-chat` / `deepseek-reasoner`) + `mcp_servers` (dense-mem RAG)
-  - `.env.example` — required secrets template; real `.env` is gitignored
   - `skills/<skill-name>/SKILL.md` — one skill per folder
-- `scripts/` — `init.sh`, `backup.sh`, `memory-bootstrap.sh`, `cloud-init.sh` (all bash)
-- `docker-compose.yml` — 7 services: 4 Hermes workers + the dense-mem memory stack (`memory-db`, `embedding`, `dense-mem`)
-- `.env` (root, gitignored) — secrets for the dense-mem stack (copied from `.env.example` by `make init`)
+- `scripts/` — `init.sh`, `backup.sh`, `memory-bootstrap.sh`, `load-secrets.sh`, `cloud-init.sh` (all bash)
+- `docker-compose.yml` — 7 services: 4 Hermes workers + the dense-mem memory stack (`memory-db`, `embedding`, `dense-mem`); declares a top-level `secrets:` block
+- `secrets/` (gitignored, created by `make init`) — one plain file per secret value; mounted into `/run/secrets/<name>`
 
 ## How the system runs
 
@@ -20,21 +19,29 @@ Deployment + instruction repo for a 4-container Hermes system (`nousresearch/her
   - `dispatcher` → role `orchestrator`, skill `orchestrate-task` (decomposes tasks into component sub-tasks, coordinates one shared feature branch + final PR task)
   - `coder` → role `developer`, skill `execute-task`, flag `--skip_context_files` (executes components or creates the PR)
   - `qa` → role `qa`, skill `execute-qa-task` (runs review-and-deploy)
-  - `telegram-bot` → gateway `telegram`, skill `command-handler` (uses dispatcher `.env` + `HERMES_PROFILE=dispatcher`)
-- **The containers install profiles from this GitHub repo at startup** (`hermes profile install <repo url> --alias <profile>`). To ship changes: commit + push, then on the server `git pull` first (refreshes the local clone that docker compose reads for `.env`/compose/scripts) and recreate containers (`docker compose up -d --force-recreate`); `make update-profiles` alone suffices for skill-only changes (runs `hermes profile update` in running containers, no restart).
+  - `telegram-bot` → gateway `telegram`, skill `command-handler` (uses the dispatcher secrets + `HERMES_PROFILE=dispatcher`)
+- **The containers install profiles from this GitHub repo at startup** (`hermes profile install <repo url> --alias <profile>`). To ship changes: commit + push, then on the server `git pull` first (refreshes the local clone that docker compose reads for compose/scripts) and recreate containers (`docker compose up -d --force-recreate`); `make update-profiles` alone suffices for skill-only changes (runs `hermes profile update` in running containers, no restart).
 - All services share the volume `./hermes-data:/home/hermes/.hermes` (Kanban DB + agent memory). Do not remove it from a service — it is the only coordination channel.
-- **Memory layer (RAG E-pool)**: each Hermes profile registers the `dense_mem` MCP server in `config.yaml` (`mcp_servers.dense_mem`, HTTP at `http://dense-mem:8080/mcp`). Hermes prefixes its tools `mcp_dense_mem_*` (e.g. `mcp_dense_mem_recall_memory`). Workers depend on `dense-mem` being healthy before starting. The stack: `memory-db` (PostgreSQL + pgvector, the durable store), `embedding` (TEI `all-MiniLM-L6-v2`, OpenAI-compatible `/v1/embeddings`), `dense-mem` (MCP server + control portal on `:8090`). Infra secrets live in the root `.env`; per-worker profile API keys (`DENSE_MEM_API_KEY`) are created via `scripts/memory-bootstrap.sh`.
+- **Memory layer (RAG E-pool)**: each Hermes profile registers the `dense_mem` MCP server in `config.yaml` (`mcp_servers.dense_mem`, HTTP at `http://dense-mem:8080/mcp`). Hermes prefixes its tools `mcp_dense_mem_*` (e.g. `mcp_dense_mem_recall_memory`). Workers depend on `dense-mem` being healthy before starting. The stack: `memory-db` (PostgreSQL + pgvector, the durable store), `embedding` (TEI `all-MiniLM-L6-v2`, OpenAI-compatible `/v1/embeddings`), `dense-mem` (MCP server + control portal on `:8090`). Infra secrets (`postgres_password`, `control_portal_token`, `ai_verifier_api_key`) live in `secrets/`; per-worker profile API keys (`dense_mem_<profile>`) are created via `scripts/memory-bootstrap.sh`.
 - Healthchecks use `hermes kanban status` (gateway container uses `hermes gateway status`); the memory stack uses `pg_isready` / `curl /health` / the dense-mem image healthcheck.
 
 ## Commands
 
 All targets use bash + `docker compose` (v2):
 
-- `make init` — creates `data/`, `workspace/`, `backups/` and copies `.env.example` → `.env` (root + each profile). Note: compose mounts `./hermes-data`, not `./data/`; the `hermes-data/` volume is **not** in `.gitignore` — never commit it (holds the Kanban DB + agent memory).
-- `make up` / `make down` / `make logs` — lifecycle (workers start only after `dense-mem` is healthy)
+- `make init` — creates `workspace/`, `backups/`, `secrets/` (empty placeholder files, never overwrites existing) and a generated `secrets/README.md`. Note: compose mounts `./hermes-data` (Kanban DB + agent memory), which **is** in `.gitignore`.
+- `make check-secrets` — preflight: every secret file declared in compose exists and required ones are non-empty (optional: `ftp_*`, `vercel_org_id`, `vercel_project_id`)
+- `make up` / `make down` / `make logs` — lifecycle (`make up` runs `check-secrets` first; workers start only after `dense-mem` is healthy; containers fail fast on unreadable secret files)
 - `make backup` — Kanban dump + dense-mem PostgreSQL `pg_dump` into `backups/`, keeps 7 days (also cron'd on server at 02:00 via `cloud-init.sh`)
-- `make memory-bootstrap` — creates the dense-mem team + per-worker profiles and prints the `DENSE_MEM_API_KEY`s
+- `make memory-bootstrap` — creates the dense-mem team + per-worker profiles and prints the keys to store as `secrets/dense_mem_<profile>`
 - `make update-profiles` — reinstall profiles in running containers
+
+## Secrets
+
+- Values live in `secrets/` (gitignored): one plain file per secret, no comments inside (the whole file content IS the value; trailing newline stripped by the loader). `make init` creates empty placeholders; fill them with `printf '%s' '<value>' > secrets/<name>`. Compose mounts each into `/run/secrets/<name>` (per-service grants in the service's `secrets:` list; `secrets:` is a bind-mounted file, **no encryption** — it's a K8s Secret-like abstraction, not a vault).
+- Containers run `scripts/load-secrets.sh` before the real command: it implements the Docker `*_FILE` convention — for every `VAR_FILE` env var it `export VAR="$(cat $VAR_FILE)"`. Compose sets `VAR_FILE=/run/secrets/<name>`; Hermes/dense-mem read plain `VAR`. The loader is strict (unreadable/missing file aborts the container).
+- `dense-mem` uses an entrypoint wrapper (`entrypoint: [.. load-secrets.sh && exec /app/docker-entrypoint.sh ..]`) because its own image entrypoint builds `POSTGRES_DSN` from env at startup; `memory-db` uses the image-native `POSTGRES_PASSWORD_FILE`. Non-secret config (URLs, model names, `POSTGRES_USER/DB`, `AI_API_KEY=tei` dummy for the local TEI) is hardcoded in compose `environment:`.
+- `scripts/check-secrets.sh` (run by `make up` / `make check-secrets`) fails before start if a required secret file is empty; optional files (`ftp_*`, `vercel_org_id`, `vercel_project_id`) may stay empty. A new secret = add a file in `secrets/` + an entry in compose `secrets:` + a `*_FILE` grant on the services that need it.
 
 On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash, or run the underlying docker commands manually. There is no test/lint step; sanity-check with `docker compose config`.
 
@@ -42,7 +49,7 @@ On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash
 
 - Skill = `SKILL.md` with YAML frontmatter: `name` (must match the folder), `description`, `license`, optional `metadata.hermes.tags` / `related_skills`.
 - **Language convention:** all documentation and skills are written in English.
-- Adding a new profile requires touching all of: new `profiles/<name>/` (config.yaml, .env.example, skills/), a service block in `docker-compose.yml`, and the loop in `scripts/init.sh`.
+- Adding a new profile requires touching all of: new `profiles/<name>/` (config.yaml, skills/), a service block in `docker-compose.yml` (with its `secrets:` grants + `*_FILE` envs), and the loop in `scripts/init.sh`.
 
 ## Kanban conventions (referenced throughout skills)
 

@@ -1,10 +1,13 @@
-.PHONY: init up down logs backup memory-bootstrap update-profiles
+.PHONY: init up down logs backup memory-bootstrap update-profiles check-secrets
 
 init:
 	bash scripts/init.sh
 
+check-secrets:
+	bash scripts/check-secrets.sh
+
 up:
-	docker compose up -d
+	bash scripts/check-secrets.sh && docker compose up -d
 
 down:
 	docker compose down

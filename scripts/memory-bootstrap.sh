@@ -1,10 +1,10 @@
 #!/bin/bash
 # Bootstraps the dense-mem memory stack: creates the "hermes-coder" team and
 # one profile per worker (dispatcher / coder / qa), then prints the API keys
-# to paste into profiles/*/.env as DENSE_MEM_API_KEY.
+# to paste into secrets/dense_mem_<profile>.
 #
 # Prerequisites:
-#   - `make init` done and CONTROL_PORTAL_TOKEN / POSTGRES_PASSWORD set in .env
+#   - `make init` done and CONTROL_PORTAL_TOKEN set in secrets/control_portal_token
 #   - the stack running:  make up  (at least memory-db + dense-mem)
 #
 # Usage:
@@ -16,18 +16,14 @@
 
 set -u
 
-if [ ! -f ".env" ]; then
-  echo "❌ Root .env not found. Run 'make init' first."
+if [ ! -r "secrets/control_portal_token" ]; then
+  echo "❌ secrets/control_portal_token not readable. Run 'make init' and fill in the secret first."
   exit 1
 fi
 
-set -a
-. ./.env
-set +a
-
-TOKEN="${CONTROL_PORTAL_TOKEN:-}"
+TOKEN="$(cat secrets/control_portal_token)"
 if [ -z "$TOKEN" ]; then
-  echo "❌ CONTROL_PORTAL_TOKEN is empty in .env"
+  echo "❌ secrets/control_portal_token is empty"
   exit 1
 fi
 
@@ -77,10 +73,10 @@ done
 
 echo "===================================================================="
 echo "✅ Done. Copy the API key (api_key / secret field) from each profile"
-echo "   response into the matching file as DENSE_MEM_API_KEY:"
-echo "     profiles/dispatcher/.env"
-echo "     profiles/coder/.env"
-echo "     profiles/qa/.env"
+echo "   response into the matching file (no newline):"
+echo "     printf '%s' '<api_key>' > secrets/dense_mem_dispatcher"
+echo "     printf '%s' '<api_key>' > secrets/dense_mem_coder"
+echo "     printf '%s' '<api_key>' > secrets/dense_mem_qa"
 echo "   (telegram-bot reuses the dispatcher key.)"
 echo "   Then:  docker compose up -d --force-recreate"
 echo "===================================================================="

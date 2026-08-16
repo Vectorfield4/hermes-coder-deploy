@@ -31,7 +31,8 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 
 ### 1. Sync `main`
 - `cd /workspace/<project>`.
-- `git checkout main && git pull origin main`.
+- Load retry protocol: `skill_view("deploy-vercel", "references/retry.md")`.
+- `git checkout main && git pull origin main`. Apply retry protocol to the pull — transient errors are retried; permanent errors fail immediately.
 
 ### 2. Resolve the Vercel link for this project
 - Read `/workspace/<project>/.vercel/project.json` → extract `orgId` and `projectId`.
@@ -47,7 +48,8 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 - On failure — return an error (do not deploy).
 
 ### 5. Deploy (staging)
-- `npx --yes vercel@latest deploy --prebuilt --token "$VERCEL_TOKEN"`.
+- Load retry protocol: `skill_view("deploy-vercel", "references/retry.md")`.
+- `npx --yes vercel@latest deploy --prebuilt --token "$VERCEL_TOKEN"`. Apply retry protocol — transient errors (timeout, 5xx) are retried; build failures and auth errors fail immediately.
 - If the CLI supports it, append `--wait` to block until the deployment is ready.
 - As a fallback, poll the returned deployment URL until it responds with HTTP 200 (max 5 minutes).
 

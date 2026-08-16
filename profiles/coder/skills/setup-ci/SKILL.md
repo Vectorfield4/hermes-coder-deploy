@@ -22,5 +22,6 @@ Run once during repository initialization. The project is built on the standardi
      4. `npm run lint` (Biome)
      5. `npm run test` (Vitest)
      6. `npm run build` (tsc + vite build)
-2. Commit and push the file.
-3. Add a task comment: "CI configured".
+2. Load retry protocol: `skill_view("setup-ci", "references/retry.md")`.
+3. Commit and push the file. Apply retry protocol — transient errors (timeout, network) are retried; permanent errors (auth) fail immediately. On failure, report the error to the caller (do not silently continue).
+4. Add a task comment: "CI configured".

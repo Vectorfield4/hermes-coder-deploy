@@ -34,7 +34,8 @@ Creates a task for the orchestrator with automatic project detection.
 - If the description contains "urgent", "critical", "срочно", "быстро" → `priority = "urgent"`
 - If the description contains "bug", "fix", "error" → `priority = "high"`
 - Otherwise → `priority = "normal"`
-8. Create a task in Kanban:
+8. Load retry protocol: `skill_view("command-handler", "references/retry.md")`.
+9. Create a task in Kanban. Apply retry protocol to `kanban_create` — transient errors are retried; permanent errors fail immediately:
 kanban_create(
 title: "{{ description }}",
 description: "{{ description }}",

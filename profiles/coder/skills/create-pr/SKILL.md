@@ -36,10 +36,12 @@ This skill is responsible for the final steps of the development process: valida
 - Ensure the current branch is the given `branch` (checkout if needed).
 - Add all changes: `git add .`.
 - Commit: `git commit -m "Task #<task_id>: <description>"`.
-- Push: `git push origin <branch>`.
+- Load retry protocol: `skill_view("create-pr", "references/retry.md")`.
+- Push with retry: `git push origin <branch>`. Apply the retry protocol — transient errors (timeout, network, 429, 5xx) are retried with exponential backoff; permanent errors (auth, 404) fail immediately.
 
 ### 4. Create Pull Request
-- Use `gh pr create` to open a PR.
+- Load retry protocol: `skill_view("create-pr", "references/retry.md")`.
+- Use `gh pr create` to open a PR. Apply the retry protocol to this call.
 - Title: `"Task #<task_id>: <description>"`.
 - Body: Include a summary of changes (can be taken from the plan).
 - Base branch: `main` or `master` (from project context).

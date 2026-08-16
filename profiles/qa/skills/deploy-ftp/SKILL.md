@@ -22,8 +22,10 @@ Runs the production FTP deploy for the current `main` branch. Called by `execute
 1. Make sure the repository is up to date: `git checkout main && git pull origin main`.
 2. If a build is required, run the commands from `validation_commands` (e.g., `npm install && npm run build`).
 3. Get FTP credentials from the environment: `FTP_HOST`, `FTP_USER`, `FTP_PASS` (injected from `secrets/ftp_host`, `secrets/ftp_user`, `secrets/ftp_pass`).
-4. Upload the files to FTP:
+4. Load retry protocol: `skill_view("deploy-ftp", "references/retry.md")`.
+5. Upload the files to FTP:
    - Use `lftp` or `curl`.
    - Example: `lftp -u $FTP_USER,$FTP_PASS $FTP_HOST -e "mirror -R ./build ./public; quit"`.
-5. On success — return SUCCESS.
-6. On failure — return an error to move the task to `blocked`.
+   - Apply the retry protocol — transient errors (timeout, network, 5xx) are retried with exponential backoff; permanent errors (auth, 404) fail immediately.
+6. On success — return SUCCESS.
+7. On failure — return an error to move the task to `blocked`.

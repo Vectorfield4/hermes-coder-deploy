@@ -22,7 +22,7 @@ metadata:
    - If `metadata.type == "deploy"` → run the FTP deploy flow:
      - Required metadata: `project`. If missing, block with reason.
      - Call `skill_discover("deploy-ftp")`; if found, call `skill_run(deploy-ftp, project)`.
-     - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "FTP deploy completed for {{ project }}."`
+     - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] FTP deploy completed for {{ project }}. | steps=<N> | retries=<N>"`
      - On failure: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "FTP deploy failed: <error details>"`
      - **Return here** — do not run the review flow.
    - Otherwise (default, `type == "review"`) → continue with the review pipeline below.
@@ -55,7 +55,7 @@ metadata:
    - **Acceptance criteria check (if `metadata.acceptance_criteria` exists)**:
      - Compare each criterion against the codebase/output. If any criterion is not met, treat the result as NEEDS_FIXES (append unmet criteria to the summary).
    - **If `review-and-deploy` returns SUCCESS**:
-      - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "QA passed. Merged to main and deployed to Vercel staging."`
+      - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to main and deployed to Vercel staging. | steps=<N> | retries=<N>"`
       - Then, best-effort, store a VERIFIED experience summary via `mcp_dense_mem_remember(...)` (concise evidence of what passed review + key decisions; mark high confidence / "verified by QA"). Fire-and-forget — never block completion on memory writes.
       - Optionally, notify via Telegram (but that's out of scope).
    - **If `review-and-deploy` returns NEEDS_FIXES** (minor issues, comments):

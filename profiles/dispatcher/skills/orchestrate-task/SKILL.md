@@ -109,7 +109,7 @@ kanban_link --parent {{ env.HERMES_KANBAN_TASK }} --child <subtask_id>
 - This ensures the PR task becomes `ready` only after all components are `done`.
 
 ### 11. Complete orchestration
-- Close the parent task: kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "Orchestration complete. Decomposed into N components + 1 PR task."
+- Close the parent task: kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] Orchestration complete. Decomposed into N components + 1 PR task. | steps=<N> | retries=<N>"
 
 ### 12. Error handling
 - If any `kanban_create` or `kanban_link` call fails, capture the error and call: kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error message>"

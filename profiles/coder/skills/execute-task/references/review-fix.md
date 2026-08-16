@@ -33,6 +33,8 @@ Loaded by `execute-task` when QA moved the task back to the coder for fixes. The
 
 6. **Push the fixes**
    - Commit and push to the same `branch` (updates the existing PR).
+   - Load retry protocol: `skill_view("execute-task", "references/retry.md")`.
+   - Push with retry — transient errors (timeout, network, 429, 5xx) are retried with exponential backoff; permanent errors (auth, 404) fail immediately.
 
 7. **Hand back to QA**
    - Move the task to QA with priority so it is reviewed again:

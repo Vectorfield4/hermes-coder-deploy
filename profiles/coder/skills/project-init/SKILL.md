@@ -23,8 +23,9 @@ This skill is called by `execute-task` to initialize a new project. It clones th
 - Receive `project` (the directory name in `/workspace`) and `repo_url`.
 
 ### 2. Clone the Repository
+- Load retry protocol: `skill_view("project-init", "references/retry.md")`.
 - If `/workspace/<project>` does not exist or is empty:
-  - Run `git clone <repo_url> /workspace/<project>`.
+  - Run `git clone <repo_url> /workspace/<project>`. Apply retry protocol — transient errors (timeout, network) are retried; permanent errors (auth, 404) fail immediately.
 - If it already exists:
   - Pull the latest changes: `git -C /workspace/<project> pull`.
 
@@ -105,7 +106,8 @@ Create the following files:
 ```
 
 ### 6. Install Dependencies
-- Run `npm install` in the project root.
+- Load retry protocol: `skill_view("project-init", "references/retry.md")`.
+- Run `npm install` in the project root. Apply retry protocol — network timeouts are retried with backoff.
 - Ensure `package-lock.json` is generated and committed — it pins exact versions.
 
 ### 7. Link the Project to Vercel (for staging deploys)
@@ -127,7 +129,8 @@ Create the following files:
 - This file is safe to commit: it is what `deploy-vercel` (QA profile) reads to deploy this project to staging. Never commit `.vercel/.env*` or `.env.local` (they contain secrets).
 
 ### 8. Commit and Push
-- Commit the scaffold (including `.vercel/project.json`) to the project's main branch and push.
+- Load retry protocol: `skill_view("project-init", "references/retry.md")`.
+- Commit the scaffold (including `.vercel/project.json`) to the project's main branch and push. Apply retry protocol to the push.
 
 ### 9. Set Up CI
 - Call `skill_run(setup-ci, project)` to create and push `.github/workflows/ci.yml` (`npm run lint` / `npm run test` / `npm run build`).

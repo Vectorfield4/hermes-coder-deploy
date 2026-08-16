@@ -134,3 +134,35 @@ The containers install profiles from this GitHub repository on startup. To ship 
 1. `git pull` on the server (updates the local clone that docker compose reads compose/scripts from).
 2. `docker compose up -d --force-recreate` — for compose/script changes or a full profile reinstall.
 3. `make update-profiles` — sufficient for skill-only changes (no restart).
+
+## 📊 Eval & Observability
+
+### Metrics tracked
+
+| Metric | Source | How |
+|--------|--------|-----|
+| **Task Success Rate** | Kanban `done` vs total | `daily-stats.sh` |
+| **Blocked rate** | Kanban `blocked` tasks | `daily-stats.sh` |
+| **Latency** | `created_at` → `completed_at` | `daily-stats.sh` |
+| **Retract rate** | dense-mem `retracted` records | `daily-stats.sh` |
+| **QA pass rate** | Structured `[outcome=success]` in comments | Parsed from task comments |
+| **Review iterations** | coder↔QA loop count per task | Parsed from task comments |
+
+### Structured outcome logging
+
+Every `kanban_complete` comment includes a structured tag:
+```
+[outcome=success] <summary> | steps=<N> | retries=<N>
+```
+This enables automated metrics collection without external observability tools.
+
+### Daily stats
+
+```bash
+make daily-stats  # requires TELEGRAM_CHAT_ID env var or argument
+```
+
+Sends a daily summary to Telegram: task counts by status, completed/blocked tasks, memory stats. Can be cron'd:
+```
+0 9 * * * cd /root/hermes-coder-deploy && TELEGRAM_CHAT_ID=<id> make daily-stats
+```

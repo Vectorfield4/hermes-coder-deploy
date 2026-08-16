@@ -44,7 +44,7 @@ This skill is responsible for the final steps of the development process: valida
 - Use `gh pr create` to open a PR. Apply the retry protocol to this call.
 - Title: `"Task #<task_id>: <description>"`.
 - Body: Include a summary of changes (can be taken from the plan).
-- Base branch: `main` or `master` (from project context).
+- Base branch: `dev` (staging branch). Production release to `main` is handled separately via `/release`.
 
 ### 5. Output
 - Extract the PR number from the `gh` command output.

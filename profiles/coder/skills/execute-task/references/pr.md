@@ -44,4 +44,4 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Then complete the PR task:
      `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "PR #<number> created. Handed off to QA review."`
    - On failure of `create-pr`: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
-   - Code review is NOT done here — QA handles it via `execute-qa-task` → `review-and-deploy`. If QA finds issues it moves this review task back to the coder (see `references/review-fix.md`).
+    - Code review is NOT done here — QA handles it via `execute-qa-task` → `review-and-merge`. If QA finds issues it moves this review task back to the coder (see `references/review-fix.md`).

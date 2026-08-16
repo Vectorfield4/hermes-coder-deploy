@@ -1,21 +1,22 @@
 ---
-name: review-and-deploy
-description: Checks CI status, merges the PR to main, and deploys the changes to Vercel staging.
+name: review-and-merge
+description: Checks CI status, merges the PR to dev, and triggers Vercel staging deployment.
 license: MIT
 metadata:
   hermes:
-    tags: [qa, ci, deploy]
+    tags: [qa, ci, review, staging]
     related_skills: [execute-qa-task, resolve-merge-conflict, deploy-vercel]
 ---
 
-# Review and Deploy
+# Review and Merge
 
 ## Overview
-This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it to `main`, and deploy the merged code to Vercel staging. It assumes that CI is already set up for the project.
+This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it to `dev`, and trigger a Vercel staging deployment. Merging to `dev` automatically deploys to Vercel staging.
 
 ## When to Use
-- This skill is called automatically by `execute-qa-task` for tasks in `ready` status.
+- This skill is called automatically by `execute-qa-task` for `type: review` tasks.
 - **Do not use** this skill manually.
+- For `type: release` tasks, use `release-to-main` instead.
 
 ## Instructions
 
@@ -34,18 +35,18 @@ This skill is called by `execute-qa-task` to verify the CI status of a PR, merge
   - Update task status to `ready` with a comment containing the error log.
   - **Stop here**.
 
-### 4. Merge PR
-- If CI passes (or if there is no CI, which should not happen), merge the PR: `gh pr merge --squash`.
+### 4. Merge PR to dev
+- If CI passes (or if there is no CI, which should not happen), merge the PR to `dev`: `gh pr merge --squash --base dev`.
 - If there is a merge conflict:
   - Call `skill_run` with `resolve-merge-conflict`.
   - If the conflict is resolved, proceed with the merge.
   - If not, update task status to `ready` with a comment about the conflict.
 
-### 5. Deploy to Vercel staging
-- After a successful merge, call `skill_run` with `deploy-vercel` (builds `main` and creates a staging/preview deployment).
+### 5. Vercel staging deployment
+- After a successful merge to `dev`, call `skill_run` with `deploy-vercel` (builds `dev` and creates a staging/preview deployment).
 - If the deployment succeeds:
   - Update task status to `done`.
-  - Add a comment: "Merged to main. Vercel staging deploy: <url>"
+  - Add a comment: "Merged to dev. Vercel staging deploy: <url>"
 - If the deployment fails:
   - Update task status to `blocked` with an error description.
 
@@ -57,10 +58,11 @@ This skill is called by `execute-qa-task` to verify the CI status of a PR, merge
 ## Common Pitfalls
 - **Assuming CI is always present**: If CI is missing, the project was not set up correctly. This should be handled at the project addition stage.
 - **Not handling timeouts**: Always enforce a maximum wait time for CI.
+- **Merging to main instead of dev**: This skill targets `dev`. For production merges, use `release-to-main`.
 
 ## Verification Checklist
 - [ ] PR number is retrieved.
 - [ ] CI status is checked and passes.
-- [ ] PR is merged to `main` successfully.
+- [ ] PR is merged to `dev` successfully.
 - [ ] Vercel staging deployment is completed.
 - [ ] Task status is updated correctly.

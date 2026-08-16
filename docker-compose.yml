@@ -8,13 +8,11 @@ services:
       - ./workspace:/workspace
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
     secrets:
-      - telegram_bot_token
       - openai_api_key
       - dense_mem_dispatcher
     environment:
       HERMES_PROFILE: dispatcher
       OPENAI_API_BASE: https://api.deepseek.com/v1
-      TELEGRAM_BOT_TOKEN_FILE: /run/secrets/telegram_bot_token
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_dispatcher
     depends_on:
@@ -123,6 +121,7 @@ services:
     volumes:
       - ./hermes-data:/home/hermes/.hermes
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
+      - ./scripts/notify-blocked.sh:/usr/local/bin/notify-blocked.sh:ro
     secrets:
       - telegram_bot_token
       - openai_api_key
@@ -140,6 +139,7 @@ services:
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
         hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
+        /usr/local/bin/notify-blocked.sh &
         hermes gateway run --profile dispatcher --skill command-handler --gateway telegram
       "
     healthcheck:

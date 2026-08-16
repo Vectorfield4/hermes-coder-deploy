@@ -94,33 +94,77 @@ Cancels a task (moves it to `cancelled`).
 2. If it can be cancelled → `kanban_update(id, status: cancelled)`.
 3. Reply: "❌ Task #<id> cancelled."
 
-### 5. `/help`
-Shows the list of available commands.
-
-### 6. `/deploy <description>`
-Creates a deploy task for QA that runs the production FTP deploy on the current `main`.
+### 5. `/release <project>`
+Creates a release task for QA that opens a PR from `dev` to `main`. The task is blocked until a human approves (HITL gate).
 
 **Algorithm**:
-1. Extract the description from the message (everything after `/deploy`).
+1. Extract the project name or description from the message (everything after `/release`).
+2. If the description is empty → reply: "Please provide a project name."
+3. Determine the project (same logic as `/task`):
+   - `memory_read(projects)`; if there are no projects → reply: "No projects registered. Use /project add first."
+   - Match the description against the projects (keywords / LLM semantic analysis).
+   - If a match is found → use it; otherwise reply: "Project not found. Use /project add to register it."
+4. Create the release task in Kanban:
+   kanban_create(
+   title: "Release: {{ project }} (dev → main)",
+   description: "Open a PR from dev to main for project {{ project }}. After PR creation, block for human approval before merging.",
+   assignee: qa,
+   status: ready,
+   metadata: {
+   project: "{{ project }}",
+   type: "release",
+   branch: "dev",
+   target_branch: "main",
+   chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
+   source: "telegram"
+   }
+   )
+5. Reply: "📦 Release task #<id> created for project **{{ project }}**. QA will open a PR from dev to main and wait for your approval."
+
+> Note: `/release` does NOT deploy. It only creates a PR and waits for human approval. After merge, deploy separately with `/deploy-ftp`.
+
+### 6. `/unblock <id>`
+Unblocks a blocked task (HITL approval). The task must belong to the user (by `chat_id`).
+
+**Algorithm**:
+1. Verify the task exists and belongs to the user (by `chat_id` from metadata).
+2. If the task is not blocked → reply: "Task #<id> is not blocked (status: <current_status>)."
+3. If blocked → log the approval decision, then unblock:
+   kanban_comment(
+     task_id: "{{ id }}",
+     body: "Approved by user in chat {{ env.TELEGRAM_CHAT_ID }} at {{ timestamp }}."
+   )
+   kanban_unblock(id)
+4. Reply: "✅ Task #<id> unblocked. The agent will resume."
+
+> Note: Use `/status` to see your blocked tasks and their IDs.
+
+### 7. `/help`
+Shows the list of available commands.
+
+### 8. `/deploy-ftp <description>`
+Creates a deploy task for QA that downloads the latest release zip from GitHub and uploads it to the server via FTP.
+
+**Algorithm**:
+1. Extract the description from the message (everything after `/deploy-ftp`).
 2. If the description is empty → reply: "Please provide a project name or description."
 3. Determine the project (same logic as `/task`):
    - `memory_read(projects)`; if there are no projects → `project = "default"`.
    - Match the description against the projects (keywords / LLM semantic analysis).
    - If a match is found → use it; otherwise `project = "default"`.
 4. Create the deploy task in Kanban:
-kanban_create(
-title: "Deploy: {{ project }}",
-description: "Run the production FTP deploy for project {{ project }} on branch main.",
-assignee: qa,
-status: ready,
-metadata: {
-project: "{{ project }}",
-type: "deploy",
-branch: "main",
-chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
-source: "telegram"
-}
-)
+   kanban_create(
+   title: "Deploy: {{ project }}",
+   description: "Download the latest release zip from GitHub and upload to production via FTP for project {{ project }}.",
+   assignee: qa,
+   status: ready,
+   metadata: {
+   project: "{{ project }}",
+   type: "deploy",
+   chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
+   source: "telegram"
+   }
+   )
 5. Reply: "🚀 Deploy task #<id> created for project **{{ project }}**."
 
-> Note: merges to `main` already deploy to Vercel staging automatically. `/deploy` runs the FTP deploy (production) on demand.
+> Note: `/deploy-ftp` downloads the latest GitHub Release zip and uploads it to the server via FTP. No human approval required — it's a mechanical operation. A release must exist first (run `/release` to create one).

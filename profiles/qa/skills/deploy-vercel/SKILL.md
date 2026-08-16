@@ -1,20 +1,20 @@
 ---
 name: deploy-vercel
-description: Builds the current main branch and creates a staging (preview) deployment on Vercel using the Vercel CLI.
+description: Builds the current dev branch and creates a staging (preview) deployment on Vercel using the Vercel CLI.
 license: MIT
 metadata:
   hermes:
     tags: [qa, deploy, vercel]
-    related_skills: [review-and-deploy, deploy-ftp]
+    related_skills: [review-and-merge, deploy-ftp]
 ---
 
 # Deploy to Vercel (Staging)
 
 ## Overview
-Builds the project at `main` and uploads it to Vercel as a staging/preview deployment. Called by `review-and-deploy` after a PR is merged to `main`.
+Builds the project at `dev` and uploads it to Vercel as a staging/preview deployment. Called by `review-and-merge` after a PR is merged to `dev`.
 
 ## When to Use
-- Automatically after `review-and-deploy` merges a PR to `main`.
+- Automatically after `review-and-merge` merges a PR to `dev`.
 - **Do not use** this skill manually.
 
 ## Prerequisites
@@ -29,10 +29,10 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 
 ## Instructions
 
-### 1. Sync `main`
+### 1. Sync `dev`
 - `cd /workspace/<project>`.
 - Load retry protocol: `skill_view("deploy-vercel", "references/retry.md")`.
-- `git checkout main && git pull origin main`. Apply retry protocol to the pull — transient errors are retried; permanent errors fail immediately.
+- `git checkout dev && git pull origin dev`. Apply retry protocol to the pull — transient errors are retried; permanent errors fail immediately.
 
 ### 2. Resolve the Vercel link for this project
 - Read `/workspace/<project>/.vercel/project.json` → extract `orgId` and `projectId`.
@@ -54,16 +54,16 @@ Builds the project at `main` and uploads it to Vercel as a staging/preview deplo
 - As a fallback, poll the returned deployment URL until it responds with HTTP 200 (max 5 minutes).
 
 ### 6. Output
-- Return the staging URL (e.g., `https://<deployment>.vercel.app`) to `review-and-deploy`.
+- Return the staging URL (e.g., `https://<deployment>.vercel.app`) to `review-and-merge`.
 
 ## Common Pitfalls
-- **Not being on `main`**: always checkout and pull `main` first so the merge is included.
+- **Not being on `dev`**: always checkout and pull `dev` first so the merge is included.
 - **Non-interactive mode**: always pass `--token` and `--yes`; the CLI must never prompt.
 - **Project not linked**: if `.vercel/project.json` is missing and there is no env fallback, return an error instead of guessing — run `vercel link` in the project first.
 - **Committing secrets**: `.vercel/project.json` only contains `orgId`/`projectId` (not secrets) and is safe to commit; `.vercel/.env*.local` and `.vercel/.env*.prod.local` files must never be committed.
 
 ## Verification Checklist
-- [ ] `main` is up to date.
+- [ ] `dev` is up to date.
 - [ ] Vercel link resolved for `<project>` (`.vercel/project.json` or env fallback).
 - [ ] Project settings pulled successfully.
 - [ ] Local build succeeds.

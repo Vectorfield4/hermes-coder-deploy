@@ -21,7 +21,7 @@ All services share the `hermes-data` volume (Kanban + agent memory) — it is th
 Each skill is a Markdown instruction for the agent. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
 
 ### dispatcher
-- **command-handler** — handles the `/task`, `/project add`, `/status`, `/cancel`, `/deploy`, `/help` commands from Telegram; creates tasks for the orchestrator (or directly for the coder on `/project add`).
+- **command-handler** — handles the `/task`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help` commands from Telegram; creates tasks for the orchestrator (or directly for the coder on `/project add`).
 - **orchestrate-task** — decomposes a task into component sub-tasks (UI / content / integration), coordinates a single shared branch `feature/<task_id>-<title>` and a final PR task.
 
 ### coder
@@ -33,10 +33,11 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 - Specialized: **ui-architect**, **ui-implementer**, **content-strategist**, **integration-specialist**, **technical-planner**, **narrative-designer**, **simple-task-executor**, **threejs-scene-builder**.
 
 ### qa
-- **execute-qa-task** — dispatches on task type: `type: deploy` runs `deploy-ftp`; `type: review` runs `review-and-deploy`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The review task loops coder ↔ QA until QA passes.
-- **review-and-deploy** — checks CI (waits up to 10 min), code review, merge (squash) to `main`, then deploys to Vercel staging via `deploy-vercel`.
-- **deploy-vercel** — builds `main` and creates a Vercel staging/preview deployment using the Vercel CLI. Each project carries its link in `.vercel/project.json`; only `VERCEL_TOKEN` is needed in the QA profile.
-- **deploy-ftp** — production FTP deploy of `main`, triggered on demand by the `/deploy` command.
+- **execute-qa-task** — dispatches on task type: `type: deploy` runs `deploy-ftp`; `type: release` runs `release-to-main`; `type: review` runs `review-and-merge`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The review task loops coder ↔ QA until QA passes.
+- **review-and-merge** — checks CI (waits up to 10 min), code review, merge (squash) to `dev`, then deploys to Vercel staging via `deploy-vercel`.
+- **release-to-main** — opens a PR from `dev` to `main`, blocks for human approval (HITL gate via `kanban_block` + `/unblock`), then merges after approval.
+- **deploy-vercel** — builds `dev` and creates a Vercel staging/preview deployment using the Vercel CLI. Each project carries its link in `.vercel/project.json`; only `VERCEL_TOKEN` is needed in the QA profile.
+- **deploy-ftp** — downloads the latest release zip from GitHub Releases and uploads it to the production server via FTP. Triggered by `/deploy-ftp`.
 - **resolve-merge-conflict** — automatic conflict resolution via `git merge --strategy-option theirs`.
 - **cleanup-branch** — deletes the branch after completion.
 
@@ -44,7 +45,9 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 
 Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
 
-**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR → QA reviews and merges to `main` → Vercel staging deploy.
+**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR (to `dev`) → QA reviews and merges to `dev` → Vercel staging deploy. `/release` → PR `dev` → `main` → blocked (HITL) → `/unblock` → merge → build → GitHub Release with zip. `/deploy-ftp` → download zip from GitHub Release → FTP to server.
+
+**HITL notifications:** The `telegram-bot` container runs `scripts/notify-blocked.sh` in the background alongside the gateway. It polls for blocked tasks with `approval-required:` in the reason and sends a Telegram message to the task owner (`chat_id` from metadata) with the task ID and a reminder to `/unblock`. All Telegram communication (inbound commands + outbound notifications) is centralized in the `telegram-bot` service.
 
 ## 🧠 Memory layer (RAG E-pool via dense-mem)
 
@@ -66,7 +69,7 @@ All secret values live in `secrets/` (gitignored) as one plain file per value. `
 - Hermes and dense-mem read env vars, not files, so every container runs `scripts/load-secrets.sh` first: for each `<NAME>_FILE` env var it `export NAME="$(cat ...)"` (Docker `*_FILE` convention). The loader fails fast if a secret file is missing.
 - `make up` runs `scripts/check-secrets.sh` first (`make check-secrets` for a standalone preflight): it fails before start if any secret file is missing or a **required** one is empty, so a fresh clone never silently starts with empty credentials. Optional secrets (`ftp_*`, `vercel_org_id`, `vercel_project_id`) may stay empty.
 - `memory-db` uses the image-native `POSTGRES_PASSWORD_FILE`; `dense-mem` gets an entrypoint wrapper around its own `/app/docker-entrypoint.sh` because that script builds `POSTGRES_DSN` from env at startup. Non-secret config (URLs, model names, `POSTGRES_USER/DB`, `AI_API_KEY=tei` dummy for the local TEI) is hardcoded in compose `environment:`.
-- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_{host,user,pass}` (only for `/deploy`), `vercel_org_id` / `vercel_project_id` (legacy link shortcut).
+- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_{host,user,pass}` (only for `/deploy-ftp`), `vercel_org_id` / `vercel_project_id` (legacy link shortcut).
 
 ## 🧱 Core stack (installed by `project-init`)
 
@@ -108,7 +111,7 @@ Every PR merged by QA to `main` is automatically deployed to Vercel staging by t
 
 ### Production FTP (on demand)
 
-Run `/deploy <project>` in Telegram → QA runs `deploy-ftp` (builds `main`, uploads to FTP). Requires `ftp_host`, `ftp_user`, `ftp_pass` in `secrets/`.
+Run `/deploy-ftp <project>` in Telegram → QA runs `deploy-ftp` (downloads release zip, uploads to FTP). Requires `ftp_host`, `ftp_user`, `ftp_pass` in `secrets/`.
 
 ### Option 1: Automatic cloud-init (recommended)
 

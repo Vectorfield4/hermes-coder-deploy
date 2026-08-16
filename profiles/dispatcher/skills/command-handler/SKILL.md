@@ -135,7 +135,19 @@ Unblocks a blocked task (HITL approval). The task must belong to the user (by `c
      body: "Approved by user in chat {{ env.TELEGRAM_CHAT_ID }} at {{ timestamp }}."
    )
    kanban_unblock(id)
-4. Reply: "✅ Task #<id> unblocked. The agent will resume."
+4. Record the approval as a positive training signal in the E-pool (best-effort, never block on failure):
+   - Read the task to extract context: `kanban_get_task(id)` → get `metadata.project`, `metadata.type`, and the most recent kanban comment (which contains the diff stat and security checklist from the QA agent).
+   - Write the signal:
+     ```
+     mcp_dense_mem_remember(
+       evidence="HITL approval: user <chat_id> approved <task_type> for <project> at <timestamp>. Context: <summary from QA comment — diff stat, security checklist pass/fail>.",
+       tags=["project:<project>", "hitl-approval", "<task_type>"],
+       claims=["human-verified:true", "approval-type:<task_type>"],
+       confidence=high
+     )
+     ```
+   - Ignore errors: if the memory write fails, the unblock still stands.
+5. Reply: "✅ Task #<id> unblocked. The agent will resume."
 
 > Note: Use `/status` to see your blocked tasks and their IDs.
 

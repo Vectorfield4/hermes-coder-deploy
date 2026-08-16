@@ -54,6 +54,7 @@ metadata:
 - `description` (detailed, copied from parent with specifics)
 - `type` (ui / content / integration)
 - `rules_keys_needed`: subset of keys from the index relevant to this component
+- `acceptance_criteria`: 2-5 concrete, testable conditions that must be true when the component is done (e.g. "component renders without errors", "passes lint", "matches design spec"). These are the checklist QA will verify.
 
 ### 6. Generate a Unique Feature Branch Name
 - Create `feature/<task_id>-<sanitized_title>` (e.g., `feature/42-login-page`).  
@@ -73,7 +74,8 @@ type: "<component_type>",
 parent_id: "{{ env.HERMES_KANBAN_TASK }}",
 component: true,
 rules_hash: "<rules_hash>",
-rules_keys_needed: ["<key1>", "<key2>"]
+rules_keys_needed: ["<key1>", "<key2>"],
+acceptance_criteria: ["<criterion 1>", "<criterion 2>"]
 }
 )
 - Store the returned IDs.

@@ -20,16 +20,21 @@ Creates a task for the orchestrator with automatic project detection.
 **Algorithm**:
 1. Extract the description from the message (everything after `/task`).
 2. If the description is empty → reply: "Please provide a task description."
-3. Get the project list from memory: `memory_read(projects)`. If there are no projects → `project = "default"`.
-4. Match the description against the projects:
+3. Guardrails: reject the description if it is shorter than 10 characters or contains any of these tokens: `curl`, `wget`, `eval`, `exec`, `sudo`, `rm -rf`, `<!--`, `<script` — reply: "Description contains disallowed content."
+4. Get the project list from memory: `memory_read(projects)`. If there are no projects → `project = "default"`.
+5. Match the description against the projects:
 - Search for keywords in the description: project names, their aliases, or the words "site", "project", "repo" + context.
 - Use the LLM for semantic analysis: "Which project does this task belong to?"
 - If a matching project is found → use it.
 - If not found → `project = "default"`.
-5. Determine the task type:
+6. Determine the task type:
 - If the description contains "bug", "fix", "error" → `type = "bugfix"`
 - Otherwise → `type = "feature"`
-6. Create a task in Kanban:
+7. Determine priority:
+- If the description contains "urgent", "critical", "срочно", "быстро" → `priority = "urgent"`
+- If the description contains "bug", "fix", "error" → `priority = "high"`
+- Otherwise → `priority = "normal"`
+8. Create a task in Kanban:
 kanban_create(
 title: "{{ description }}",
 description: "{{ description }}",
@@ -38,11 +43,12 @@ status: ready,
 metadata: {
 project: "{{ project }}",
 type: "{{ type }}",
+priority: "{{ priority }}",
 chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
 source: "telegram"
 }
 )
-7. Reply: "✅ Task #<id> created for project **{{ project }}** and handed off to the orchestrator."
+9. Reply: "✅ Task #<id> created for project **{{ project }}** and handed off to the orchestrator."
 
 ### 2. `/project add <url> [name]`
 Adds a new project and creates an initialization task **directly for the coder**.

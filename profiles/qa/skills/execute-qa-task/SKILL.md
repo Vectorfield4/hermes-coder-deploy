@@ -52,6 +52,8 @@ metadata:
      - Return a report with status (success / failure / needs-fixes).
 
 5. **Handle the result**
+   - **Acceptance criteria check (if `metadata.acceptance_criteria` exists)**:
+     - Compare each criterion against the codebase/output. If any criterion is not met, treat the result as NEEDS_FIXES (append unmet criteria to the summary).
    - **If `review-and-deploy` returns SUCCESS**:
       - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "QA passed. Merged to main and deployed to Vercel staging."`
       - Then, best-effort, store a VERIFIED experience summary via `mcp_dense_mem_remember(...)` (concise evidence of what passed review + key decisions; mark high confidence / "verified by QA"). Fire-and-forget — never block completion on memory writes.

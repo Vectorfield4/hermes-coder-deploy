@@ -13,11 +13,17 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Use validation commands from cached rules (see `references/memory.md`) or from `AGENTS.md`.
    - Call `kanban_heartbeat` before validation.
 
-3. **Create the pull request**
+3. **Self-review the diff**
+   - Run `git diff --name-only` to see what was changed.
+   - For each changed file, verify it matches the project rules (from `references/memory.md`): code style, naming, structure, import conventions.
+   - If a violation is found → fix it now (do not push a known violation to QA).
+   - If all clean → proceed to PR creation.
+
+4. **Create the pull request**
    - Call `skill_run(create-pr, project, branch)`.
    - This skill commits all changes, pushes the branch, and opens a PR.
 
-4. **Hand off to QA review**
+5. **Hand off to QA review**
    - On success of `skill_run(create-pr, ...)`, create a QA review task (the QA loop picks it up by `assignee: qa`, `status: ready`):
      kanban_create(
      title: "QA Review: <branch>",

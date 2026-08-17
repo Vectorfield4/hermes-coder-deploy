@@ -63,7 +63,7 @@ services:
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
         /usr/local/bin/ensure-profile.sh coder &&
-        hermes kanban work --profile coder --role developer --skill execute-task --skip_context_files --loop --interval 5
+        hermes kanban work --profile coder --role developer --skill execute-task --skip_context_files --loop --interval 7
       "
     healthcheck:
       test: ["CMD", "hermes", "kanban", "status"]
@@ -109,7 +109,7 @@ services:
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
         /usr/local/bin/ensure-profile.sh qa &&
-        hermes kanban work --profile qa --role qa --skill execute-qa-task --loop --interval 5
+        hermes kanban work --profile qa --role qa --skill execute-qa-task --loop --interval 11
       "
     healthcheck:
       test: ["CMD", "hermes", "kanban", "status"]
@@ -227,7 +227,6 @@ services:
       AI_VERIFIER_MAX_INPUT_TOKENS: "64000"
       AI_VERIFIER_MAX_OUTPUT_TOKENS: "8192"
     ports:
-      - "127.0.0.1:8080:8080"
       - "127.0.0.1:8090:8090"
     extra_hosts:
       - "host.docker.internal:host-gateway"

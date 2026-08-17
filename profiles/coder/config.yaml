@@ -11,4 +11,4 @@ mcp_servers:
     headers:
       Authorization: "Bearer ${DENSE_MEM_API_KEY}"
     tools:
-      include: [remember, get_submission_status, recall_memory, trace_memory]
+      include: [remember, get_submission_status, recall_memory, trace_memory, retract_evidence, correct_relationship]

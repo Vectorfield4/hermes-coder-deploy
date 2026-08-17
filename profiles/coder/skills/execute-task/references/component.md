@@ -4,6 +4,14 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
 
 ## Steps
 
+0. **Validate acceptance criteria** (before doing any work)
+   - Read `metadata.acceptance_criteria` if present.
+   - For each criterion:
+     - Does it trace to the original task `description`? If it is invented or unrelated → drop it from your checklist (do NOT reject the task, just ignore fabricated criteria).
+     - Is it verifiable via the project's validation commands (lint/test/build)? If not → note it as "manual review only" so you know QA will eyeball it.
+   - If `acceptance_criteria` is missing entirely → proceed but add a comment: `"No acceptance_criteria in metadata — QA will review against description only"`.
+   - This prevents executing against wrong criteria and wastes fewer review cycles.
+
 1. **Identify component type**
    - Use `metadata.type` if present (ui, content, integration, 3d).
    - Else, infer from `title`/`description`.

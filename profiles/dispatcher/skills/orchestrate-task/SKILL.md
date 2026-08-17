@@ -57,6 +57,11 @@ metadata:
 - `type` (ui / content / integration / 3d)
 - `rules_keys_needed`: subset of keys from the index relevant to this component
 - `acceptance_criteria`: 2-5 concrete, testable conditions that must be true when the component is done (e.g. "component renders without errors", "passes lint", "matches design spec"). These are the checklist QA will verify.
+- **Self-check before creating sub-tasks**: for each component, verify its `acceptance_criteria` against:
+  1. The original task `description` — every criterion must trace to a stated requirement, not be invented.
+  2. The project's validation commands (from `AGENTS.md`) — at least one criterion must be verifiable via lint/test/build, not only by LLM judgment.
+  3. Feasibility — drop any criterion that cannot be checked in the available toolset (no "user loves the design" — that's not testable).
+  If a criterion fails these checks, rewrite or drop it before including it in `metadata`. Bad criteria propagate to QA and waste review cycles.
 - **If `metadata.exploration_triggered == true`**: this task has been bounced back after ≥3 failed review iterations. The previous decomposition did not work. You MUST:
   1. **Recall exploration anti-patterns** (best-effort):
      ```

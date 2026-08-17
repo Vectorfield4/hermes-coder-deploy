@@ -58,24 +58,32 @@ metadata:
      - Do **not** write rule records from the QA profile (rules are owned by the orchestrator).
    - If `rules_keys` is empty → load essential QA guidelines from `AGENTS.md` or fallback to generic.
 
-4. **Run the QA pipeline**
-   - **Step 4.1**: Call `skill_discover("review-and-merge")` to find the appropriate skill.
+4. **Pre-merge acceptance criteria check** (BEFORE review-and-merge)
+   - If `metadata.acceptance_criteria` exists and is non-empty:
+     - For each criterion, verify against the PR diff and codebase:
+       - **Automated criterion** (mentions "lint", "test", "build", "passes", "no errors") → run the matching validation command from `AGENTS.md`. If it fails → append failure to summary, skip to step 5 as NEEDS_FIXES without merging.
+       - **Manual criterion** (mentions "matches design", "responsive", "accessible") → note as "pending manual verification" — proceed with review but flag these for post-merge verification.
+     - If any automated criterion fails → **do NOT call review-and-merge**. Block or bounce to coder immediately with the specific failure.
+   - If `metadata.acceptance_criteria` is missing → proceed with review (legacy tasks without criteria).
+
+5. **Run the QA pipeline**
+   - **Step 5.1**: Call `skill_discover("review-and-merge")` to find the appropriate skill.
    - If found: call `skill_run(review-and-merge, project, branch, pr_url, rules_context)`.
    - If not found: fallback to a generic QA skill (or block with "Missing QA skill").
-   - **Step 4.2 (optional, best-effort)**: call `mcp_dense_mem_recall_memory(query="<review focus, e.g. known pitfalls for <project> or the component type>")` and consider past failure patterns during the review. On failure or empty results, continue without it.
+   - **Step 5.2 (optional, best-effort)**: call `mcp_dense_mem_recall_memory(query="<review focus, e.g. known pitfalls for <project> or the component type>")` and consider past failure patterns during the review. On failure or empty results, continue without it.
    - The `review-and-merge` skill should:
      - Run automated tests (linting, unit, integration).
      - Perform code review (static analysis, security checks, adherence to guidelines).
      - Merge the PR to `dev` and deploy to Vercel staging.
      - Return a report with status (success / failure / needs-fixes).
-   - **Step 4.3 (judge, after review-and-merge returns SUCCESS)**:
+   - **Step 5.3 (judge, after review-and-merge returns SUCCESS)**:
      - Call `skill_discover("pr-judge")`. If found, call `skill_run(pr-judge, pr_url, branch, project, rules_context)`.
      - The judge returns `[judge_score=N] summary | quality=N tests=N security=N docs=N`.
      - Parse the score. If pr-judge is not found, skip scoring (treat as neutral).
 
-5. **Handle the result**
-   - **Acceptance criteria check (if `metadata.acceptance_criteria` exists)**:
-     - Compare each criterion against the codebase/output. If any criterion is not met, treat the result as NEEDS_FIXES (append unmet criteria to the summary).
+6. **Handle the result**
+   - **Post-merge manual criteria check** (for criteria flagged as "pending manual verification" in step 4):
+     - If any manual criterion (e.g. "matches design", "responsive") is clearly not met → log it but do not block (these were already flagged pre-merge).
    - **If `review-and-merge` returns SUCCESS**:
      - Include judge score in the completion comment if available:
        `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to dev and deployed to Vercel staging. | steps=<N> | retries=<N> | judge_score=N"`
@@ -113,7 +121,7 @@ metadata:
    - **If `review-and-merge` returns FAILURE** (critical errors, deployment failure, CI crash):
      - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "QA failed: <error details>"`.
 
-6. **Heartbeat and error handling**
+7. **Heartbeat and error handling**
    - Call `kanban_heartbeat` before each long-running operation (especially before `review-and-merge` or `deploy-ftp`).
    - If any `skill_run` fails, capture the error and call `kanban_block` with details.
    - Do not poll or loop — this skill runs once per task.

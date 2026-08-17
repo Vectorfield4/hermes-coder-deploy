@@ -2,31 +2,9 @@
 
 Multi-agent development system built on Hermes Agent, orchestrating work through a Kanban board.
 
-## ✅ Best Practices
-
-| Pattern | Implementation |
-|---------|----------------|
-| **Prompt Chaining** | Skills are fixed linear pipelines with no branching ambiguity. |
-| **Routing** | QA dispatches by `metadata.type`; orchestrator classifies by component type. |
-| **Parallelization** | Component sub-tasks run in parallel on separate git worktrees per shared branch. |
-| **Reflection** | Three-tier check: coder self-review (4-dimension rubric), QA review cycle, pr-judge scoring (≥7 → template, ≤4 → anti-pattern). |
-| **Tool Use** | Kanban, shell, MCP memory, skill composition, file I/O, delegation — 15+ tool categories. |
-| **Planning** | Orchestrator decomposes with `acceptance_criteria` (2–5 testable conditions) and `rules_keys_needed` per component. |
-| **Multi-Agent** | 4 containers, 3 roles (orchestrator / coder / qa) with role-based MCP tool whitelisting. |
-| **Memory** | Two-layer E-pool: rules cache (authoritative, keyed by git hash) and experience (advisory, per-profile ownership). |
-| **Learning** | pr-judge scores PRs 1–10; high scores saved as templates, low scores retracted as anti-patterns. |
-| **MCP** | dense-mem MCP server with per-profile tool access control in `config.yaml`. |
-| **Goal Monitoring** | Orchestrator sets acceptance criteria; QA verifies each against the codebase. |
-| **Exception Handling** | Retry protocol (3 attempts, exponential backoff), transient/permanent classification, heartbeat, idempotent resume. |
-| **Human-in-the-Loop** | Release gate (`/release` → blocked → `/unblock`), Telegram notifications, full command set. |
-| **RAG** | Recall before execution; rules cache with git-hash invalidation; anti-pattern recall prevents repeating failures. |
-| **Resource-Aware** | `deepseek-reasoner` for planning/review, `deepseek-chat` for implementation. |
-| **Guardrails** | Input validation (dangerous tokens blocked), MCP tool whitelisting, ownership-based memory edit control. |
-| **Evaluation** | Structured outcome tags, daily stats (TSR, drift, cost, pass@k, per-type success). |
-| **Prioritization** | Composite scoring: `type_weight + aging + iteration_boost + unblock_bonus`. Anti-starvation aging capped at 5. |
-| **Exploration** | After ≥3 review iterations: anti-patterns stored, task escalates to orchestrator for re-decomposition. |
-
 ## 🐳 Services
+
+### Workers
 
 | Service | Profile | Role | Command | Skill |
 |---------|---------|------|---------|-------|
@@ -34,9 +12,14 @@ Multi-agent development system built on Hermes Agent, orchestrating work through
 | **coder** | coder | `developer` | `hermes kanban work --loop --skip_context_files` | `execute-task` |
 | **qa** | qa | `qa` | `hermes kanban work --loop` | `execute-qa-task` |
 | **telegram-bot** | dispatcher | — | `hermes gateway run --gateway telegram` | `command-handler` |
-| **memory-db** | — | — | PostgreSQL + pgvector | durable memory store |
-| **embedding** | — | — | TEI `all-MiniLM-L6-v2` (port 8081) | embeddings for RAG |
-| **dense-mem** | — | — | MCP memory server (`:8080/mcp`, control portal `:8090`) | RAG E-pool |
+
+### Memory Stack
+
+| Service | Command | Purpose |
+|---------|---------|---------|
+| **memory-db** | PostgreSQL + pgvector | Durable memory store |
+| **embedding** | TEI `all-MiniLM-L6-v2` (port 8081) | Embeddings for RAG |
+| **dense-mem** | MCP memory server (`:8080/mcp`, control portal `:8090`) | RAG E-pool |
 
 All services share the `hermes-data` volume (Kanban + agent memory) — it is the only coordination channel. Workers start only after `dense-mem` is healthy.
 
@@ -174,3 +157,27 @@ Sends to Telegram: task counts, completed/blocked lists, memory stats, trajector
 ```
 0 9 * * * cd /root/hermes-coder-deploy && TELEGRAM_CHAT_ID=<id> make daily-stats
 ```
+
+## ✅ Best Practices
+
+| Pattern | Implementation |
+|---------|----------------|
+| **Prompt Chaining** | Skills are fixed linear pipelines with no branching ambiguity. |
+| **Routing** | QA dispatches by `metadata.type`; orchestrator classifies by component type. |
+| **Parallelization** | Component sub-tasks run in parallel on separate git worktrees per shared branch. |
+| **Reflection** | Three-tier check: coder self-review (4-dimension rubric), QA review cycle, pr-judge scoring (≥7 → template, ≤4 → anti-pattern). |
+| **Tool Use** | Kanban, shell, MCP memory, skill composition, file I/O, delegation — 15+ tool categories. |
+| **Planning** | Orchestrator decomposes with `acceptance_criteria` (2–5 testable conditions) and `rules_keys_needed` per component. |
+| **Multi-Agent** | 4 containers, 3 roles (orchestrator / coder / qa) with role-based MCP tool whitelisting. |
+| **Memory** | Two-layer E-pool: rules cache (authoritative, keyed by git hash) and experience (advisory, per-profile ownership). |
+| **Learning** | pr-judge scores PRs 1–10; high scores saved as templates, low scores retracted as anti-patterns. |
+| **MCP** | dense-mem MCP server with per-profile tool access control in `config.yaml`. |
+| **Goal Monitoring** | Orchestrator sets acceptance criteria; QA verifies each against the codebase. |
+| **Exception Handling** | Retry protocol (3 attempts, exponential backoff), transient/permanent classification, heartbeat, idempotent resume. |
+| **Human-in-the-Loop** | Release gate (`/release` → blocked → `/unblock`), Telegram notifications, full command set. |
+| **RAG** | Recall before execution; rules cache with git-hash invalidation; anti-pattern recall prevents repeating failures. |
+| **Resource-Aware** | `deepseek-reasoner` for planning/review, `deepseek-chat` for implementation. |
+| **Guardrails** | Input validation (dangerous tokens blocked), MCP tool whitelisting, ownership-based memory edit control. |
+| **Evaluation** | Structured outcome tags, daily stats (TSR, drift, cost, pass@k, per-type success). |
+| **Prioritization** | Composite scoring: `type_weight + aging + iteration_boost + unblock_bonus`. Anti-starvation aging capped at 5. |
+| **Exploration** | After ≥3 review iterations: anti-patterns stored, task escalates to orchestrator for re-decomposition. |

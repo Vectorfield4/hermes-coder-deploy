@@ -1,6 +1,6 @@
 ---
 name: execute-task
-description: Executes a single development sub-task (UI, content, integration), initializes a new project (`type: init`), or aggregates changes and creates a PR.
+description: "Executes a single development sub-task (UI, content, integration), initializes a new project (type: init), or aggregates changes and creates a PR."
 metadata:
   hermes:
     tags: [coder, executor]
@@ -48,3 +48,17 @@ metadata:
 - The workspace is at `/workspace/<project>-<task_id>` (worktree); the shared repo is at `/workspace/<project>`.
 - Start the coder agent with `--skip_context_files` to avoid overloading the global memory.
 - Experience memory (E-pool via dense-mem, see `references/rag.md`): recall before executing, remember after success. Memory tools are exposed as `mcp_dense_mem_*`; a failed memory call must never block the task.
+
+## Quality Targets (judge rubric dimensions)
+
+QA will score your PR on a 1–10 rubric. Code scoring ≥ 7 is saved as a verified template;
+code scoring ≤ 4 is retracted from memory as an anti-pattern.
+
+| Dimension | Weight | Target |
+|-----------|--------|--------|
+| Code quality | 25% | DRY, clear naming, separation of concerns, no dead code |
+| Tests | 25% | Cover new logic, test edge cases, meaningful assertions |
+| Security | 25% | No hardcoded secrets, input validation, auth checks |
+| Docs & conventions | 25% | Follow AGENTS.md, JSDoc where needed, no TODO-blockers |
+
+Before committing, verify your code against these dimensions. If any is clearly deficient — fix it before pushing.

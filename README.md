@@ -148,8 +148,10 @@ The containers install profiles from this GitHub repository on startup. To ship 
 | **Blocked rate** | Kanban `blocked` tasks | `daily-stats.sh` |
 | **Latency** | `created_at` → `completed_at` | `daily-stats.sh` |
 | **Retract rate** | dense-mem `retracted` records | `daily-stats.sh` |
-| **QA pass rate** | Structured `[outcome=success]` in comments | Parsed from task comments |
-| **Review iterations** | coder↔QA loop count per task | Parsed from task comments |
+| **Review iterations** | coder↔QA loop count per task | `task_runs` profile distinct count |
+| **Cost proxy** | Steps (skill_run) + retries per task | Parsed from `[outcome=success]` tags |
+| **TSR drift** | 7-day rolling average vs today | Persisted to `hermes-data/tsr_history.csv` |
+| **Per-type breakdown** | Success rate by `metadata.type` | `GROUP BY json_extract(metadata, '$.type')` |
 
 ### Structured outcome logging
 
@@ -165,7 +167,7 @@ This enables automated metrics collection without external observability tools.
 make daily-stats  # requires TELEGRAM_CHAT_ID env var or argument
 ```
 
-Sends a daily summary to Telegram: task counts by status, completed/blocked tasks, memory stats. Can be cron'd:
+Sends a daily summary to Telegram: task counts by status, completed/blocked tasks, memory stats, trajectory warnings, cost proxy, TSR drift alerts, and per-type breakdown. Can be cron'd:
 ```
 0 9 * * * cd /root/hermes-coder-deploy && TELEGRAM_CHAT_ID=<id> make daily-stats
 ```

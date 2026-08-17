@@ -68,13 +68,22 @@ metadata:
      - Perform code review (static analysis, security checks, adherence to guidelines).
      - Merge the PR to `dev` and deploy to Vercel staging.
      - Return a report with status (success / failure / needs-fixes).
+   - **Step 4.3 (judge, after review-and-merge returns SUCCESS)**:
+     - Call `skill_discover("pr-judge")`. If found, call `skill_run(pr-judge, pr_url, branch, project, rules_context)`.
+     - The judge returns `[judge_score=N] summary | quality=N tests=N security=N docs=N`.
+     - Parse the score. If pr-judge is not found, skip scoring (treat as neutral).
 
 5. **Handle the result**
    - **Acceptance criteria check (if `metadata.acceptance_criteria` exists)**:
      - Compare each criterion against the codebase/output. If any criterion is not met, treat the result as NEEDS_FIXES (append unmet criteria to the summary).
    - **If `review-and-merge` returns SUCCESS**:
-      - `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to dev and deployed to Vercel staging. | steps=<N> | retries=<N>"`
-      - Then, best-effort, store a VERIFIED experience summary via `mcp_dense_mem_remember(...)` (concise evidence of what passed review + key decisions; mark high confidence / "verified by QA"). Fire-and-forget — never block completion on memory writes.
+     - Include judge score in the completion comment if available:
+       `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to dev and deployed to Vercel staging. | steps=<N> | retries=<N> | judge_score=N"`
+     - **Memory decision based on judge score** (best-effort, fire-and-forget):
+       - **Score ≥ 7 (verified)**: `mcp_dense_mem_remember(evidence="<what was done, key decisions, what made it high quality>", tags=["verified", "judge:<score>", "project:<project>"], confidence=high)`.
+       - **Score 5–6 (neutral)**: Do not store. No memory action.
+       - **Score ≤ 4 (anti-pattern)**: Retract any positive QA-owned evidence about this pattern with `mcp_dense_mem_retract_evidence(...)`, then store: `mcp_dense_mem_remember(evidence="anti-pattern: <what went wrong, root cause, what to avoid>", tags=["anti-pattern", "judge:<score>", "project:<project>"], confidence=high)`.
+       - On memory call failure, continue without blocking.
    - **If `review-and-merge` returns NEEDS_FIXES** (minor issues, comments):
        - Move the task back to the coder as **high priority** so the coder loop picks it up next:
        - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"` where the board supports it.

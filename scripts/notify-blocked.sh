@@ -16,6 +16,23 @@ if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
   exit 0
 fi
 
+# Build allowed chats lookup (comma-separated list from TELEGRAM_ALLOWED_CHATS)
+ALLOWED_CHATS="${TELEGRAM_ALLOWED_CHATS:-}"
+is_chat_allowed() {
+  local target="$1"
+  if [ -z "$ALLOWED_CHATS" ]; then
+    return 0  # no restriction
+  fi
+  local IFS=','
+  for ch in $ALLOWED_CHATS; do
+    ch=$(echo "$ch" | tr -d ' ')
+    if [ "$ch" = "$target" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 send_telegram() {
   local chat_id="$1"
   local text="$2"
@@ -60,6 +77,7 @@ poll_once() {
 
     [ -z "$task_id" ] && continue
     [ -z "$chat_id" ] && continue
+    is_chat_allowed "$chat_id" || continue
 
     # Only notify for approval-required blocks
     if ! echo "$reason" | grep -qi "approval-required"; then

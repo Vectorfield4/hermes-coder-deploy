@@ -123,13 +123,15 @@ services:
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
       - ./scripts/notify-blocked.sh:/usr/local/bin/notify-blocked.sh:ro
     secrets:
-      - telegram_bot_token
+      - token
+      - TELEGRAM_ALLOWED_CHATS
       - openai_api_key
       - dense_mem_dispatcher
     environment:
       HERMES_PROFILE: dispatcher
       OPENAI_API_BASE: https://api.deepseek.com/v1
-      TELEGRAM_BOT_TOKEN_FILE: /run/secrets/telegram_bot_token
+      TELEGRAM_BOT_TOKEN_FILE: /run/secrets/token
+      TELEGRAM_ALLOWED_CHATS_FILE: /run/secrets/TELEGRAM_ALLOWED_CHATS
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_dispatcher
     depends_on:
@@ -232,7 +234,8 @@ services:
         condition: service_healthy
 
 secrets:
-  telegram_bot_token: { file: ./secrets/telegram_bot_token }
+  token: { file: ./secrets/token }
+  TELEGRAM_ALLOWED_CHATS: { file: ./secrets/TELEGRAM_ALLOWED_CHATS }
   github_token: { file: ./secrets/github_token }
   vercel_token: { file: ./secrets/vercel_token }
   vercel_org_id: { file: ./secrets/vercel_org_id }

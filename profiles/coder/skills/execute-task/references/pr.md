@@ -13,10 +13,14 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Use validation commands from cached rules (see `references/memory.md`) or from `AGENTS.md`.
    - Call `kanban_heartbeat` before validation.
 
-3. **Self-review the diff**
+3. **Self-review the diff (against judge rubric)**
    - Run `git diff --name-only` to see what was changed.
-   - For each changed file, verify it matches the project rules (from `references/memory.md`): code style, naming, structure, import conventions.
-   - If a violation is found → fix it now (do not push a known violation to QA).
+   - For each changed file, verify against the judge rubric dimensions:
+     - **Code quality**: DRY? Naming clear? No commented-out code? Consistent style with project?
+     - **Tests**: Does the diff include tests for new/changed logic? Edge cases covered?
+     - **Security**: No hardcoded secrets? Input sanitized? Auth checks in place?
+     - **Docs & conventions**: AGENTS.md conventions followed? JSDoc where needed? No TODO-blockers?
+   - If any dimension is clearly deficient → fix it now (do not push a known violation to QA).
    - If all clean → proceed to PR creation.
 
 4. **Create the pull request**

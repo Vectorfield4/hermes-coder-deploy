@@ -46,7 +46,13 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Then call `kanban_heartbeat`.
    - Each skill should write changes to the worktree directory.
 
-5. **Commit and push**
+5. **Quality check and commit**
+   - Before committing, verify against the judge rubric (see `execute-task` → Quality Targets):
+     - Code quality: clean, DRY, well-named?
+     - Tests: new logic covered?
+     - Security: no secrets, input validated?
+     - Docs: conventions followed?
+   - If any dimension is clearly deficient → fix before committing.
    - Add all changes: `git add .`
    - Commit: `git commit -m "Task #<task_id>: <description>"`
    - Push: `git push origin <branch>`

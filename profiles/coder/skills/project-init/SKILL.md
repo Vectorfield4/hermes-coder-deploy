@@ -1,6 +1,6 @@
 ---
 name: project-init
-description: Initializes a new project on the standardized stack (React + Vite + TypeScript + MUI) and links it to Vercel for staging deploys. Called by execute-task for `type: init` tasks.
+description: "Initializes a new project on the standardized stack (React + Vite + TypeScript + MUI) and links it to Vercel for staging deploys. Called by execute-task for type: init tasks."
 license: MIT
 metadata:
   hermes:

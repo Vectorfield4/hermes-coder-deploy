@@ -30,6 +30,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   coder:
     image: nousresearch/hermes-agent:latest
@@ -70,6 +75,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   qa:
     image: nousresearch/hermes-agent:latest
@@ -116,6 +126,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   telegram-bot:
     image: nousresearch/hermes-agent:latest
@@ -153,6 +168,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   memory-db:
     image: pgvector/pgvector:0.8.2-pg18-trixie
@@ -172,6 +192,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
@@ -192,6 +217,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   dense-mem:
     image: ghcr.io/markhuangai/dense-mem:latest
@@ -235,6 +265,11 @@ services:
         condition: service_healthy
       embedding:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 secrets:
   token: { file: ./secrets/token }
@@ -257,9 +292,3 @@ secrets:
 volumes:
   memory-db-data:
   embedding-cache:
-
-logging:
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"

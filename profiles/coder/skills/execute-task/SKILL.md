@@ -23,7 +23,16 @@ metadata:
   git worktree add /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} <branch>
   ```
 - All subsequent git operations happen in `/workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
-- If worktree already exists (resume), just use it.
+- If worktree already exists (resume):
+  - Check if it's usable: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} && git status`
+  - If `git status` fails or worktree is locked → prune and recreate:
+    ```
+    cd /workspace/<project>
+    git worktree prune
+    git worktree remove --force /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} 2>/dev/null || true
+    git worktree add /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} <branch>
+    ```
+  - Otherwise → use the existing worktree (resume).
 
 ## Dispatch
 

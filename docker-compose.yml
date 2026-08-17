@@ -7,6 +7,7 @@ services:
       - ./hermes-data:/home/hermes/.hermes
       - ./workspace:/workspace
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
+      - ./scripts/ensure-profile.sh:/usr/local/bin/ensure-profile.sh:ro
     secrets:
       - openai_api_key
       - dense_mem_dispatcher
@@ -21,7 +22,7 @@ services:
     command: >
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
-        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
+        /usr/local/bin/ensure-profile.sh dispatcher &&
         hermes kanban work --profile dispatcher --role orchestrator --skill orchestrate-task --loop --interval 5
       "
     healthcheck:
@@ -38,6 +39,7 @@ services:
       - ./hermes-data:/home/hermes/.hermes
       - ./workspace:/workspace
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
+      - ./scripts/ensure-profile.sh:/usr/local/bin/ensure-profile.sh:ro
     secrets:
       - github_token
       - vercel_token
@@ -60,7 +62,7 @@ services:
     command: >
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
-        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias coder &&
+        /usr/local/bin/ensure-profile.sh coder &&
         hermes kanban work --profile coder --role developer --skill execute-task --skip_context_files --loop --interval 5
       "
     healthcheck:
@@ -77,6 +79,7 @@ services:
       - ./hermes-data:/home/hermes/.hermes
       - ./workspace:/workspace
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
+      - ./scripts/ensure-profile.sh:/usr/local/bin/ensure-profile.sh:ro
     secrets:
       - github_token
       - ftp_host
@@ -105,7 +108,7 @@ services:
     command: >
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
-        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias qa &&
+        /usr/local/bin/ensure-profile.sh qa &&
         hermes kanban work --profile qa --role qa --skill execute-qa-task --loop --interval 5
       "
     healthcheck:
@@ -121,6 +124,7 @@ services:
     volumes:
       - ./hermes-data:/home/hermes/.hermes
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
+      - ./scripts/ensure-profile.sh:/usr/local/bin/ensure-profile.sh:ro
       - ./scripts/notify-blocked.sh:/usr/local/bin/notify-blocked.sh:ro
     secrets:
       - token
@@ -140,7 +144,7 @@ services:
     command: >
       sh -c "
         . /usr/local/bin/load-secrets.sh &&
-        hermes profile install https://github.com/Vectorfield4/hermes-coder-deploy --alias dispatcher &&
+        /usr/local/bin/ensure-profile.sh dispatcher &&
         /usr/local/bin/notify-blocked.sh &
         hermes gateway run --profile dispatcher --skill command-handler --gateway telegram
       "

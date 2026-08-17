@@ -74,4 +74,9 @@ Loaded by `execute-task` when QA moved the task back to the coder for fixes. The
    - Move the task to QA with priority so it is reviewed again:
      `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee qa --comment "Fixed: <summary of changes>"`
    - Do **not** `kanban_complete` — the task stays in the review loop until QA passes.
-   - On failure to fix: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
+   - On failure to fix: 
+     - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
+     - Clean up worktree (best-effort, never block on cleanup):
+       ```
+       cd /workspace/<project> && git worktree remove --force /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} 2>/dev/null || true
+       ```

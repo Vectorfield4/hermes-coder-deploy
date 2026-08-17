@@ -92,9 +92,15 @@ metadata:
        - **Score 5–6 (neutral)**: Do not store. No memory action.
        - **Score ≤ 4 (anti-pattern)**: Retract any positive QA-owned evidence about this pattern with `mcp_dense_mem_retract_evidence(...)`, then store: `mcp_dense_mem_remember(evidence="anti-pattern: <what went wrong, root cause, what to avoid>", tags=["anti-pattern", "judge:<score>", "project:<project>"], confidence=high)`.
        - On memory call failure, continue without blocking.
-   - **If `review-and-merge` returns NEEDS_FIXES** (minor issues, comments):
-       - **Iteration tracking**: Read `metadata.review_iterations` (default 0). Increment by 1: `new_iterations = review_iterations + 1`.
-       - **Exploration escalation** (if iteration ≥ 3):
+    - **If `review-and-merge` returns NEEDS_FIXES** (minor issues, comments):
+        - **Iteration tracking**: Read `metadata.review_iterations` (default 0). Increment by 1: `new_iterations = review_iterations + 1`.
+        - **Exploration count**: Read `metadata.exploration_count` (default 0). This counter persists across re-decompositions (inherited from parent → children).
+        - **Hard limit — MAX_EXPLORATIONS = 2** (i.e. 2 re-decomposition rounds = minimum 6 total review iterations):
+          - If `exploration_count >= 2`: the task has been re-decomposed twice and still fails. **Terminal state.**
+            - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "MAX_EXPLORATIONS_REACHED: Task failed after <exploration_count> exploration rounds (<new_iterations> total review iterations). Requires manual intervention — use /cancel or re-scope the task."`
+            - Store final anti-pattern (best-effort): `mcp_dense_mem_remember(evidence="TERMINAL: Task '<title>' (project <project>) exhausted <exploration_count> exploration rounds. Total iterations: <new_iterations>. Manual intervention required — the task scope or approach needs fundamental redesign.", tags=["anti-pattern", "terminal", "project:<project>"], confidence=high)`
+            - **Return here** — do not bounce to coder or orchestrator.
+        - **Exploration escalation** (if iteration ≥ 3 AND `exploration_count < 2`):
          - The coder-QA loop has bounced 3+ times. This signals a systemic issue, not a simple fix.
          - **Store anti-pattern** (best-effort, never block):
            ```
@@ -111,7 +117,7 @@ metadata:
            kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee orchestrator \
              --comment "EXPLORATION TRIGGERED: Task has been through <new_iterations> review iterations without passing. Previous approach is not working. Re-decompose with a different strategy: try simpler components, different tech choices, or break into smaller pieces. Original QA findings: <summary>"
            ```
-         - Update metadata: `kanban_update(task_id, metadata: { review_iterations: <new_iterations>, exploration_triggered: true, priority_score: <current_score + 5> })`.
+          - Update metadata: `kanban_update(task_id, metadata: { review_iterations: <new_iterations>, exploration_triggered: true, exploration_count: <exploration_count + 1>, priority_score: <current_score + 5> })`.
          - The high priority_score ensures the orchestrator picks this task next.
          - **Return here** — do not bounce to coder again.
        - **Normal bounce** (iteration < 3):

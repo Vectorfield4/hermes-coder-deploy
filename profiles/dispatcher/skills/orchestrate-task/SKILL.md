@@ -97,7 +97,8 @@ parent_id: "{{ env.HERMES_KANBAN_TASK }}",
 component: true,
 rules_hash: "<rules_hash>",
 rules_keys_needed: ["<key1>", "<key2>"],
-acceptance_criteria: ["<criterion 1>", "<criterion 2>"]
+acceptance_criteria: ["<criterion 1>", "<criterion 2>"],
+exploration_count: <parent's exploration_count or 0>
 }
 )
 - Store the returned IDs.
@@ -116,7 +117,8 @@ branch: "<branch_name>",
 parent_id: "{{ env.HERMES_KANBAN_TASK }}",
 pr_creation: true,
 rules_hash: "<rules_hash>",
-rules_keys_needed: ["validation-commands", "code-review-guidelines"]
+rules_keys_needed: ["validation-commands", "code-review-guidelines"],
+exploration_count: <parent's exploration_count or 0>
 }
 )
 - Store its ID.

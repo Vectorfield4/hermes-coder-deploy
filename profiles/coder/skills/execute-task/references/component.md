@@ -70,4 +70,9 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
 6. **Complete the component task**
    - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "Component implemented."`
      - Then store the outcome as experience (best-effort): follow the `remember` procedure in `references/rag.md` — a concise summary of what was implemented and the key decisions. Do not block task completion on memory writes.
-   - On failure: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
+   - On failure: 
+     - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
+     - Clean up worktree (best-effort, never block on cleanup):
+       ```
+       cd /workspace/<project> && git worktree remove --force /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} 2>/dev/null || true
+       ```

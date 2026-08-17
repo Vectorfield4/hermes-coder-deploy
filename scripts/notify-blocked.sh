@@ -16,8 +16,8 @@ if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
   exit 0
 fi
 
-# Build allowed chats lookup (comma-separated list from TELEGRAM_ALLOWED_CHATS)
-ALLOWED_CHATS="${TELEGRAM_ALLOWED_CHATS:-}"
+# Build allowed chats lookup (comma-separated list from telegram_allowed_chats)
+ALLOWED_CHATS="${telegram_allowed_chats:-}"
 is_chat_allowed() {
   local target="$1"
   if [ -z "$ALLOWED_CHATS" ]; then

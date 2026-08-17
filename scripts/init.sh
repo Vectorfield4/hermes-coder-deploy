@@ -7,7 +7,7 @@ mkdir -p workspace backups secrets
 echo "🔐 Creating empty secret placeholder files in secrets/ (never overwrites existing)..."
 for name in \
   token \
-  TELEGRAM_ALLOWED_CHATS \
+  telegram_allowed_chats \
   github_token \
   vercel_token \
   vercel_org_id \
@@ -40,7 +40,7 @@ Map (see docker-compose.yml `secrets:`):
 | File                      | Required | Used by            | Value                                  |
 |---------------------------|----------|--------------------|----------------------------------------|
 | token                       | yes      | telegram-bot       | Telegram bot token                   |
-| TELEGRAM_ALLOWED_CHATS     | yes      | telegram-bot, daily-stats | Comma-separated allowed chat IDs |
+| telegram_allowed_chats     | yes      | telegram-bot, daily-stats | Comma-separated allowed chat IDs |
 | github_token              | yes      | coder, qa          | GitHub PAT                              |
 | vercel_token              | yes      | coder, qa          | Vercel API token                        |
 | vercel_org_id             | optional | coder, qa          | Vercel org id (legacy link shortcut)    |

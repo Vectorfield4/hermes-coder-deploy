@@ -10,7 +10,7 @@
 set -u
 
 # Required secrets (see secrets/README.md). Add new required secrets here.
-REQUIRED="token TELEGRAM_ALLOWED_CHATS github_token vercel_token openai_api_key \
+REQUIRED="token telegram_allowed_chats github_token vercel_token openai_api_key \
 dense_mem_dispatcher dense_mem_coder dense_mem_qa \
 postgres_password control_portal_token ai_verifier_api_key"
 

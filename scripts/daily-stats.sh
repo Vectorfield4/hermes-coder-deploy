@@ -27,8 +27,8 @@ fi
 BOT_TOKEN="$(cat secrets/token)"
 
 # Validate chat_id against allowed list
-if [ -r "secrets/TELEGRAM_ALLOWED_CHATS" ]; then
-  ALLOWED=$(cat secrets/TELEGRAM_ALLOWED_CHATS)
+if [ -r "secrets/telegram_allowed_chats" ]; then
+  ALLOWED=$(cat secrets/telegram_allowed_chats)
   if [ -n "$ALLOWED" ]; then
     MATCHED=0
     IFS=',' read -ra CHATS <<< "$ALLOWED"

@@ -9,6 +9,3 @@ hermes-data/
 
 # Logs
 *.log
-
-# Audit plan (working doc, not for repo)
-AUDIT-PLAN.md

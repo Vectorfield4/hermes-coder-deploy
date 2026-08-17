@@ -85,7 +85,7 @@ poll_once() {
     fi
 
     # Extract PR URL from reason if present
-    pr_url="$(echo "$reason" | grep -oP 'https://github\.com/\S+' || true)"
+    pr_url="$(echo "$reason" | grep -oE 'https://github\.com/[^ ]+' || true)"
 
     local now last_notified should_notify
     now="$(date +%s)"

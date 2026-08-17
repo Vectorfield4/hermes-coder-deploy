@@ -1,6 +1,6 @@
 #!/bin/bash
 # Trajectory checks: coder↔QA iteration count per review task.
-# Usage: bash stats/collect-sqlite.sh <kanban.db>
+# Usage: bash stats/collect-trajectory.sh <kanban.db>
 # Output: TSV — id|title|iterations (only tasks with > 1 distinct profile)
 # Exit 0 = data, exit 1 = no data or error.
 

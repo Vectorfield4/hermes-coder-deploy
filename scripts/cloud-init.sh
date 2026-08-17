@@ -19,9 +19,10 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
-# Clone the repository
+# Clone the repository (override with REPO_URL env var for forks)
+REPO_URL="${REPO_URL:-https://github.com/Vectorfield4/hermes-coder-deploy.git}"
 cd /root
-git clone https://github.com/Vectorfield4/hermes-coder-deploy.git
+git clone "$REPO_URL" hermes-coder-deploy
 cd hermes-coder-deploy
 
 # Create directories + empty secrets/ placeholders (fill in via SSH, see below)

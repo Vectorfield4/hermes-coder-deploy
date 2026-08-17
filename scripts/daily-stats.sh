@@ -75,8 +75,11 @@ MEMORY_TOTAL=""
 MEMORY_RETRACTED=""
 if [ -r "secrets/postgres_password" ] && [ -n "$(cat secrets/postgres_password)" ]; then
   PG_PASS="$(cat secrets/postgres_password)"
-  MEMORY_TOTAL=$(docker exec -e PGPASSWORD="$PG_PASS" hermes-memory-db psql -U densemem -d densemem -t -c "SELECT COUNT(*) FROM submissions;" 2>/dev/null || echo "?")
-  MEMORY_RETRACTED=$(docker exec -e PGPASSWORD="$PG_PASS" hermes-memory-db psql -U densemem -d densemem -t -c "SELECT COUNT(*) FROM submissions WHERE retracted = true;" 2>/dev/null || echo "?")
+  # Use .pgpass file instead of PGPASSWORD env to avoid password in ps aux
+  docker exec hermes-memory-db sh -c "printf '*:5432:densemem:densemem:%s\n' '$PG_PASS' > /tmp/.pgpass"
+  MEMORY_TOTAL=$(docker exec -e PGPASSFILE=/tmp/.pgpass hermes-memory-db psql -U densemem -d densemem -t -c "SELECT COUNT(*) FROM submissions;" 2>/dev/null || echo "?")
+  MEMORY_RETRACTED=$(docker exec -e PGPASSFILE=/tmp/.pgpass hermes-memory-db psql -U densemem -d densemem -t -c "SELECT COUNT(*) FROM submissions WHERE retracted = true;" 2>/dev/null || echo "?")
+  docker exec hermes-memory-db rm -f /tmp/.pgpass
 fi
 
 # ── #1 Trajectory checks ───────────────────────────────────────────

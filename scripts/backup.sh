@@ -39,8 +39,11 @@ fi
 
 # ── Memory backup (PostgreSQL) ──────────────────────────────────────
 echo "💾 Creating memory backup (dense-mem PostgreSQL)..."
-docker exec -e PGPASSWORD="$(cat secrets/postgres_password)" hermes-memory-db \
-  pg_dump -U densemem -d densemem --no-owner \
+# Use .pgpass file instead of PGPASSWORD env to avoid password in ps aux
+docker exec hermes-memory-db sh -c \
+  "printf '*:5432:densemem:densemem:%s\n' \"$(cat secrets/postgres_password)\" > /tmp/.pgpass && \
+   PGPASSFILE=/tmp/.pgpass pg_dump -U densemem -d densemem --no-owner && \
+   rm -f /tmp/.pgpass" \
   > "$BACKUP_DIR/memory_$TIMESTAMP.sql"
 
 if [ ! -s "$BACKUP_DIR/memory_$TIMESTAMP.sql" ]; then

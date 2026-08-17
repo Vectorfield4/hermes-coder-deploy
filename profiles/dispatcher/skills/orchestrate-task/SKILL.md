@@ -41,6 +41,7 @@ metadata:
 
 ### 4. Recall related past experience (RAG E-pool)
 - Call `mcp_dense_mem_recall_memory(query="<short goal summary of the task>")` to find similar past plans, decisions, or patterns for this project.
+- **Recall anti-patterns** for this project: `mcp_dense_mem_recall_memory(query="<goal>", filter={tags: ["anti-pattern", "project:<project>"]})`. If recalled, these are known failures — do NOT repeat the same decomposition approach.
 - Include the returned evidence contexts in the decomposition prompt as **advisory experience hints only** — never as authoritative requirements.
 - Graceful degradation: if the MCP call fails or returns no results, continue without it. Planning must never block on the memory layer.
 - Project rules (step 3) always take precedence over anything recalled from the E-pool.
@@ -56,6 +57,21 @@ metadata:
 - `type` (ui / content / integration / 3d)
 - `rules_keys_needed`: subset of keys from the index relevant to this component
 - `acceptance_criteria`: 2-5 concrete, testable conditions that must be true when the component is done (e.g. "component renders without errors", "passes lint", "matches design spec"). These are the checklist QA will verify.
+- **If `metadata.exploration_triggered == true`**: this task has been bounced back after ≥3 failed review iterations. The previous decomposition did not work. You MUST:
+  1. **Recall exploration anti-patterns** (best-effort):
+     ```
+     mcp_dense_mem_recall_memory(
+       query="exploration anti-pattern for <project>: <task title>",
+       filter={tags: ["anti-pattern", "exploration", "project:<project>"]}
+     )
+     ```
+     These records describe *what approach was tried and why it failed*. Treat them as **authoritative avoidance constraints** — do NOT repeat the same decomposition strategy.
+     On failure or empty results, continue without them.
+  2. Read the previous component structure (from the task's child links or comments).
+  3. Analyze what went wrong using QA findings + recalled anti-patterns.
+  4. Re-decompose with a **different strategy**: fewer components, simpler scope, different tech choices, or a completely different approach. **The new decomposition must be provably different from the anti-patterns recalled.**
+  5. Add a comment: `[exploration] Re-decomposed with alternative strategy: <what changed and why>. Anti-patterns avoided: <summary of recalled anti-patterns>`.
+  6. Preserve the original `project`, `branch`, and `rules_hash` — the new components continue on the same branch.
 
 ### 6. Generate a Unique Feature Branch Name
 - Create `feature/<task_id>-<sanitized_title>` (e.g., `feature/42-login-page`).  

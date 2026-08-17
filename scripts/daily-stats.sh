@@ -113,6 +113,14 @@ if PASSK_LINE=$("$STATS_DIR/collect-passk.sh" "$DB" 2>/dev/null); then
   read -r PASSK_CONSECUTIVE PASSK_DONE PASSK_TOTAL <<< "$PASSK_LINE"
 fi
 
+# ── #9 Prioritization metrics ─────────────────────────────────────
+PRIO_SCORED=$(sqlite3 "$DB" "SELECT COUNT(*) FROM tasks WHERE status='ready' AND metadata LIKE '%priority_score%';" 2>/dev/null || echo "0")
+PRIO_READY=$(sqlite3 "$DB" "SELECT COUNT(*) FROM tasks WHERE status='ready';" 2>/dev/null || echo "0")
+
+# ── #10 Exploration metrics ───────────────────────────────────────
+EXPLORATION_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM tasks WHERE metadata LIKE '%exploration_triggered: true%' OR metadata LIKE '%exploration_flag: true%';" 2>/dev/null || echo "0")
+HIGH_ITERATION=$(sqlite3 "$DB" "SELECT '- ' || COALESCE(title, 'untitled') FROM tasks WHERE metadata LIKE '%review_iterations%' AND CAST(SUBSTR(metadata, INSTR(metadata, 'review_iterations:') + 19) AS INTEGER) >= 3 AND status != 'done' LIMIT 5;" 2>/dev/null || echo "")
+
 # ── Build message ──────────────────────────────────────────────────
 MSG="📊 *Daily Stats — ${TODAY}*
 
@@ -199,6 +207,26 @@ if [ "${PASSK_CONSECUTIVE:-0}" -gt 0 ]; then
 🎯 *pass^k*
 - Consecutive done: ${PASSK_CONSECUTIVE}
 - Total done: ${PASSK_DONE}/${PASSK_TOTAL}"
+fi
+
+if [ "${PRIO_SCORED:-0}" -gt 0 ]; then
+  MSG="${MSG}
+
+⚡ *Prioritization*
+- Scored ready tasks: ${PRIO_SCORED}/${PRIO_READY}"
+fi
+
+if [ "${EXPLORATION_COUNT:-0}" -gt 0 ]; then
+  MSG="${MSG}
+
+🔍 *Exploration triggers*: ${EXPLORATION_COUNT}"
+fi
+
+if [ -n "$HIGH_ITERATION" ]; then
+  MSG="${MSG}
+
+🔄 *High-iteration tasks (≥3 rounds)*
+${HIGH_ITERATION}"
 fi
 
 # ── Send ───────────────────────────────────────────────────────────

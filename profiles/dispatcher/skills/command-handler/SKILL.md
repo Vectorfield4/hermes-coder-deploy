@@ -34,8 +34,16 @@ Creates a task for the orchestrator with automatic project detection.
 - If the description contains "urgent", "critical", "срочно", "быстро" → `priority = "urgent"`
 - If the description contains "bug", "fix", "error" → `priority = "high"`
 - Otherwise → `priority = "normal"`
-8. Load retry protocol: `skill_view("command-handler", "references/retry.md")`.
-9. Create a task in Kanban. Apply retry protocol to `kanban_create` — transient errors are retried; permanent errors fail immediately:
+8. Compute initial priority_score (age=0 at creation, use type_weight from the scoring table):
+- `type_weight`: bugfix=4, release=4, deploy=3, review=3, feature=2, ui=2, content=1, integration=2, init=1
+- `age_urgency = 0` (task is brand new)
+- `iteration_penalty = 0` (first iteration)
+- `dependency_bonus = 0` (no dependents yet)
+- `priority_score = type_weight` (sum of all components at creation)
+- If `priority == "urgent"` → add +2 bonus to `priority_score`.
+- If `priority == "high"` → add +1 bonus to `priority_score`.
+9. Load retry protocol: `skill_view("command-handler", "references/retry.md")`.
+10. Create a task in Kanban. Apply retry protocol to `kanban_create` — transient errors are retried; permanent errors fail immediately:
 kanban_create(
 title: "{{ description }}",
 description: "{{ description }}",
@@ -45,11 +53,13 @@ metadata: {
 project: "{{ project }}",
 type: "{{ type }}",
 priority: "{{ priority }}",
+priority_score: {{ priority_score }},
+review_iterations: 0,
 chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
 source: "telegram"
 }
 )
-9. Reply: "✅ Task #<id> created for project **{{ project }}** and handed off to the orchestrator."
+11. Reply: "✅ Task #<id> created for project **{{ project }}** (score: {{ priority_score }}) and handed off to the orchestrator."
 
 ### 2. `/project add <url> [name]`
 Adds a new project and creates an initialization task **directly for the coder**.

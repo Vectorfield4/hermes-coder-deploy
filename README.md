@@ -2,6 +2,30 @@
 
 Multi-agent development system built on Hermes Agent, orchestrating work through a Kanban board.
 
+## ✅ Best Practices
+
+| Pattern | Implementation |
+|---------|----------------|
+| **Prompt Chaining** | Skills are fixed linear pipelines with no branching ambiguity. |
+| **Routing** | QA dispatches by `metadata.type`; orchestrator classifies by component type. |
+| **Parallelization** | Component sub-tasks run in parallel on separate git worktrees per shared branch. |
+| **Reflection** | Three-tier check: coder self-review (4-dimension rubric), QA review cycle, pr-judge scoring (≥7 → template, ≤4 → anti-pattern). |
+| **Tool Use** | Kanban, shell, MCP memory, skill composition, file I/O, delegation — 15+ tool categories. |
+| **Planning** | Orchestrator decomposes with `acceptance_criteria` (2–5 testable conditions) and `rules_keys_needed` per component. |
+| **Multi-Agent** | 4 containers, 3 roles (orchestrator / coder / qa) with role-based MCP tool whitelisting. |
+| **Memory** | Two-layer E-pool: rules cache (authoritative, keyed by git hash) and experience (advisory, per-profile ownership). |
+| **Learning** | pr-judge scores PRs 1–10; high scores saved as templates, low scores retracted as anti-patterns. |
+| **MCP** | dense-mem MCP server with per-profile tool access control in `config.yaml`. |
+| **Goal Monitoring** | Orchestrator sets acceptance criteria; QA verifies each against the codebase. |
+| **Exception Handling** | Retry protocol (3 attempts, exponential backoff), transient/permanent classification, heartbeat, idempotent resume. |
+| **Human-in-the-Loop** | Release gate (`/release` → blocked → `/unblock`), Telegram notifications, full command set. |
+| **RAG** | Recall before execution; rules cache with git-hash invalidation; anti-pattern recall prevents repeating failures. |
+| **Resource-Aware** | `deepseek-reasoner` for planning/review, `deepseek-chat` for implementation. |
+| **Guardrails** | Input validation (dangerous tokens blocked), MCP tool whitelisting, ownership-based memory edit control. |
+| **Evaluation** | Structured outcome tags, daily stats (TSR, drift, cost, pass@k, per-type success). |
+| **Prioritization** | Composite scoring: `type_weight + aging + iteration_boost + unblock_bonus`. Anti-starvation aging capped at 5. |
+| **Exploration** | After ≥3 review iterations: anti-patterns stored, task escalates to orchestrator for re-decomposition. |
+
 ## 🐳 Services
 
 | Service | Profile | Role | Command | Skill |
@@ -21,145 +45,124 @@ All services share the `hermes-data` volume (Kanban + agent memory) — it is th
 Each skill is a Markdown instruction for the agent. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
 
 ### dispatcher
-- **command-handler** — handles the `/task`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help` commands from Telegram; creates tasks for the orchestrator (or directly for the coder on `/project add`).
-- **orchestrate-task** — decomposes a task into component sub-tasks (UI / content / integration), coordinates a single shared branch `feature/<task_id>-<title>` and a final PR task.
+- **command-handler** — Telegram gateway: `/task`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help`. Stamps initial `priority_score` on task creation.
+- **orchestrate-task** — decomposes tasks into component sub-tasks (UI / content / integration) with `acceptance_criteria`, coordinates a shared branch and final PR task. Recalls anti-patterns before decomposing; handles exploration re-decomposition.
+- **prioritize-tasks** — composite scoring (type + aging + iterations + unblocking). Advisory metadata for operators.
 
 ### coder
-- **execute-task** — executes a single component sub-task (`component: true`), initializes projects (`type: init`), aggregates changes and creates a PR (`pr_creation: true`, then hands off to QA), or fixes QA findings (`type: review`).
-- **create-pr** — validation (lint/tests), commit, push of the branch, PR creation.
-- **project-init** / **setup-ci** — project initialization (for `type: init` tasks). `project-init` also links the repo to Vercel (`VERCEL_TOKEN`) so staging deploys work out of the box.
-- **project-discover** — scans `/workspace`, reads project context (`AGENTS.md`, `.hermes.md`, etc.).
-- **frontend-stack** — reference hub for the standardized stack; `references/` has a distilled page per library (React, React Router, Zustand, TypeScript, Vite, MUI, React Hook Form, Zod, TanStack Query, GSAP, Three.js/R3F, Vitest, MSW, Biome, Storybook). Loaded by the component skills via `skill_view` when writing code.
+- **execute-task** — dispatches to: component execution, project init, PR creation, or review-fix loop. Routes `type: review` to `references/review-fix.md`.
+- **create-pr** — validation, commit, push, PR creation to `dev`.
+- **project-init** / **setup-ci** — project initialization (links Vercel for staging).
+- **frontend-stack** — reference hub for the standardized stack (15 library references via `skill_view`).
 - Specialized: **ui-architect**, **ui-implementer**, **content-strategist**, **integration-specialist**, **technical-planner**, **narrative-designer**, **simple-task-executor**, **threejs-scene-builder**.
 
 ### qa
-- **execute-qa-task** — dispatches on task type: `type: deploy` runs `deploy-ftp`; `type: release` runs `release-to-main`; `type: review` runs `review-and-merge`, returns the task to the coder as high priority (`ready`) when issues are found, or blocks it (`blocked`). The review task loops coder ↔ QA until QA passes.
-- **review-and-merge** — checks CI (waits up to 10 min), code review, merge (squash) to `dev`, then deploys to Vercel staging via `deploy-vercel`.
-- **release-to-main** — opens a PR from `dev` to `main`, blocks for human approval (HITL gate via `kanban_block` + `/unblock`), then merges after approval.
-- **deploy-vercel** — builds `dev` and creates a Vercel staging/preview deployment using the Vercel CLI. Each project carries its link in `.vercel/project.json`; only `VERCEL_TOKEN` is needed in the QA profile.
-- **deploy-ftp** — downloads the latest release zip from GitHub Releases and uploads it to the production server via FTP. Triggered by `/deploy-ftp`.
-- **resolve-merge-conflict** — automatic conflict resolution via `git merge --strategy-option theirs`.
-- **cleanup-branch** — deletes the branch after completion.
+- **execute-qa-task** — dispatches by type: `review` → review-and-merge (loops coder↔QA), `release` → release-to-main (HITL gate), `deploy` → deploy-ftp. Triggers exploration escalation after ≥3 review iterations.
+- **review-and-merge** — CI check (10 min wait), code review, squash merge to `dev`, Vercel staging deploy.
+- **release-to-main** — PR dev→main, blocked for human approval, merge after `/unblock`, build, GitHub Release.
+- **deploy-vercel** / **deploy-ftp** — staging and production deploys.
+- **pr-judge** — scores PRs 1–10, feeds verified templates and anti-patterns to the E-pool.
+- **resolve-merge-conflict** — automatic resolution via `git merge --strategy-option theirs`.
 
-## 🔄 How loops work
+## 🔄 Task Flow
 
-Each worker container runs an infinite loop via `hermes kanban work --profile <p> --role <r> --skill <s> --loop --interval 5` (polls Kanban every 5 seconds), and the Telegram gateway runs as a separate `telegram-bot` service. Service → role → skill wiring lives only in `docker-compose.yml`.
+```
+/task → orchestrator → decompose into components → coder (parallel) → PR → QA review
+                                                                        ↓
+                                                              ┌─── PASS → merge to dev → Vercel staging
+                                                              │
+                                                              └─── FAIL → coder fix → QA re-review
+                                                                                       ↓
+                                                                              ≥3 iterations → EXPLORATION
+                                                                                               ↓
+                                                                                         orchestrator re-decompose
+```
 
-**Task flow:** `/task` in Telegram → `ready` task for the orchestrator → decomposition into sub-tasks → the coder executes components → the PR task creates a PR (to `dev`) → QA reviews and merges to `dev` → Vercel staging deploy. `/release` → PR `dev` → `main` → blocked (HITL) → `/unblock` → merge → build → GitHub Release with zip. `/deploy-ftp` → download zip from GitHub Release → FTP to server.
+**Release:** `/release` → QA creates PR dev→main → blocked (HITL) → `/unblock` → merge → build → GitHub Release.
+**Deploy:** `/deploy-ftp` → QA downloads release zip → FTP to server.
 
-**HITL notifications:** The `telegram-bot` container runs `scripts/notify-blocked.sh` in the background alongside the gateway. It polls for blocked tasks with `approval-required:` in the reason and sends a Telegram message to the task owner (`chat_id` from metadata) with the task ID and a reminder to `/unblock`. All Telegram communication (inbound commands + outbound notifications) is centralized in the `telegram-bot` service.
+## 🧠 Memory Layer (RAG E-pool)
 
-## 🧠 Memory layer (RAG E-pool via dense-mem)
+Two-layer memory via **dense-mem** MCP server (PostgreSQL + pgvector + TEI embeddings).
 
-All three workers (and the Telegram gateway) connect to the **dense-mem** MCP server through `mcp_servers.dense_mem` in each profile's `config.yaml`. Hermes exposes its tools as `mcp_dense_mem_*` (e.g. `mcp_dense_mem_recall_memory`).
+### Layer 1: Project Rules (authoritative)
+- Orchestrator extracts `AGENTS.md` / `SOUL.md` into tagged `project-rules:<project>` records, keyed by `rules_hash` (git commit hash).
+- Coder/QA recall via `references/memory.md`. Disk files are the deterministic fallback.
 
-- **Recall before executing**: the dispatcher recalls similar past plans before decomposing (`orchestrate-task` step 4); the coder recalls patterns before implementing a component (`execute-task` → `references/rag.md`); QA can recall known pitfalls before reviewing.
-- **Remember after success**: the coder stores a compressed summary after a completed component; QA stores verified/high-confidence evidence after a review passes.
-- **Rules cache (project rules)**: the orchestrator extracts `AGENTS.md` / `SOUL.md` into tagged `project-rules:<project>` records in the E-pool (index + per-key), keyed by `rules_hash` carried in task metadata. Coder/QA recall the rules via `references/memory.md`; the disk files are the deterministic fallback. Rule records are authoritative over experience.
-- **Correct on failure**: the coder traces and retires its own wrong evidence during the fix loop; dense-mem enforces ownership (a profile can only correct/retract its own submissions).
-- Rules cache (AGENTS.md / SOUL.md) is authoritative; E-pool is advisory. Recalled templates still must pass validation. **Every memory call is best-effort and never blocks a task.**
+### Layer 2: Experience (advisory)
+- **Recall** before executing: similar past solutions, patterns, pitfalls.
+- **Remember** after success: compressed summaries (never raw source).
+- **Anti-patterns**: recalled before execution — known failures are not repeated.
+- **Exploration anti-patterns** (`tags: ["anti-pattern", "exploration"]`): stored by QA/coder when iteration ≥ 3. Orchestrator recalls these as **authoritative avoidance constraints** before re-decomposition.
+- **Correct on failure**: coder retracts its own wrong evidence; QA retracts its own. Ownership enforced by dense-mem.
 
-Stack (in `docker-compose.yml`): `memory-db` (PostgreSQL + pgvector, durable store) → `embedding` (TEI, `all-MiniLM-L6-v2`, 384-dim) → `dense-mem` (MCP server + control portal). Infra secrets live in `secrets/` (see [Secrets](#-secrets)); per-worker profile API keys (`dense_mem_<profile>`) are created via `scripts/memory-bootstrap.sh`.
+**All memory calls are best-effort — never block a task.**
+
+### Stack
+
+`memory-db` (PostgreSQL 18 + pgvector) → `embedding` (TEI `all-MiniLM-L6-v2`, 384-dim) → `dense-mem` (MCP `:8080/mcp`, control portal `:8090`).
 
 ## 🔐 Secrets
 
-All secret values live in `secrets/` (gitignored) as one plain file per value. `make init` creates empty placeholders plus a generated `secrets/README.md` describing each file; fill them with `printf '%s' '<value>' > secrets/<name>`.
+One plain file per value in `secrets/` (gitignored). `make init` creates empty placeholders.
 
-- Compose declares the values in a top-level `secrets:` block and mounts each into `/run/secrets/<name>` for the services that grant it. It is a K8s Secret-like file mount, **not encrypted** — treat the host filesystem as trusted.
-- Hermes and dense-mem read env vars, not files, so every container runs `scripts/load-secrets.sh` first: for each `<NAME>_FILE` env var it `export NAME="$(cat ...)"` (Docker `*_FILE` convention). The loader fails fast if a secret file is missing.
-- `make up` runs `scripts/check-secrets.sh` first (`make check-secrets` for a standalone preflight): it fails before start if any secret file is missing or a **required** one is empty, so a fresh clone never silently starts with empty credentials. Optional secrets (`ftp_*`, `vercel_org_id`, `vercel_project_id`) may stay empty.
-- `memory-db` uses the image-native `POSTGRES_PASSWORD_FILE`; `dense-mem` gets an entrypoint wrapper around its own `/app/docker-entrypoint.sh` because that script builds `POSTGRES_DSN` from env at startup. Non-secret config (URLs, model names, `POSTGRES_USER/DB`, `AI_API_KEY=tei` dummy for the local TEI) is hardcoded in compose `environment:`.
-- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_{host,user,pass}` (only for `/deploy-ftp`), `vercel_org_id` / `vercel_project_id` (legacy link shortcut).
+- Compose mounts each into `/run/secrets/<name>` (K8s-style file mount, **not encrypted**).
+- `load-secrets.sh` implements Docker `*_FILE` convention. Fails fast on missing files.
+- `check-secrets.sh` (run by `make up`) validates required secrets are non-empty.
+- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_*`, `vercel_org_id` / `vercel_project_id`.
 
-## 🧱 Core stack (installed by `project-init`)
+## 🧱 Core Stack
 
-The stack is standardized and installed automatically by `project-init` (a `type: init` task, created via `/project add`). All development tasks must target this stack.
+Installed by `project-init`. All development targets this stack only.
 
 | Component | Purpose |
 |-----------|---------|
-| **React** | UI library |
-| **React Router** | Routing |
-| **Zustand** | State management |
-| **TypeScript** | Typing |
-| **Vite** | Build tool |
-| **MUI (Material-UI)** | UI components (atoms) |
-| **React Hook Form** | Forms |
-| **Zod** | Schema validation |
-| **TanStack Query** | API data fetching and caching |
-| **GSAP** | Animations |
-| **Three.js** | 3D graphics |
-| **React Three Fiber** | React wrapper for Three.js |
-| **Jest / Vitest** | Testing |
-| **MSW (Mock Service Worker)** | API mocking for tests |
-| **Biome** | Linter + Formatter |
-| **Storybook** | Component documentation and isolation |
-
-- The stack is set up by the **project-init** and **setup-ci** skills; all coder component skills (ui-architect, ui-implementer, threejs-scene-builder, integration-specialist, content-strategist, narrative-designer, simple-task-executor, technical-planner) target only this stack.
-- `project-init` writes an `AGENTS.md` into the project repository describing the stack, the commands, and the list of skills that apply to it.
-- AI models are not fixed globally: each profile defines a default model in `config.yaml`, and any skill invocation may specify a specific model.
+| React + TypeScript | UI + typing |
+| Vite | Build tool |
+| Zustand | State management |
+| MUI | UI components |
+| React Hook Form + Zod | Forms + validation |
+| TanStack Query | API fetching + caching |
+| React Router | Routing |
+| GSAP + Three.js/R3F | Animations + 3D |
+| Vitest + MSW | Testing + API mocking |
+| Biome | Linter + Formatter |
+| Storybook | Component docs |
 
 ## 🚀 Deployment
 
-### Vercel staging
-
-Every PR merged by QA to `main` is automatically deployed to Vercel staging by the `deploy-vercel` skill. `project-init` links a new project to Vercel automatically when `VERCEL_TOKEN` is set in the coder profile. Setup:
-
-1. Create a Vercel token (`VERCEL_TOKEN`) under Account → Tokens and set it in `secrets/vercel_token` (used by `project-init` in the coder and `deploy-vercel` in QA).
-2. Ensure the Vercel project exists (import the repo in the dashboard, or `npx vercel project add <name>`).
-3. On `/project add`, `project-init` links the repo and commits `.vercel/project.json` (orgId + projectId). To link manually later: `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"` in the project and commit `.vercel/project.json`.
-4. `secrets/vercel_org_id` / `secrets/vercel_project_id` are an optional shortcut: when set, `project-init` writes `.vercel/project.json` directly (no CLI linking needed).
+### Vercel staging (automatic)
+Every PR merged by QA to `dev` → `deploy-vercel` creates a staging preview. `project-init` links Vercel automatically when `VERCEL_TOKEN` is set.
 
 ### Production FTP (on demand)
+`/deploy-ftp <project>` → QA downloads latest GitHub Release zip → FTP to server. Requires `ftp_*` in `secrets/`.
 
-Run `/deploy-ftp <project>` in Telegram → QA runs `deploy-ftp` (downloads release zip, uploads to FTP). Requires `ftp_host`, `ftp_user`, `ftp_pass` in `secrets/`.
-
-### Option 1: Automatic cloud-init (recommended)
-
-1. In the Timeweb Cloud panel, when creating a server, find the **"Cloud-init"** field (Configuration tab).
-2. Copy the contents of `cloud-init.sh` from this repository and paste it into the field.
-3. Create the server.
-4. Once the server has booted, connect via SSH and fill in the secrets (as shown in the cloud-init message): `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key` in `secrets/` (plus the optional `ftp_*` / `vercel_org_id` / `vercel_project_id`).
-5. Start the system with `make up`.
-6. Create the dense-mem profiles and wire the workers:
-   - `bash scripts/memory-bootstrap.sh` — creates the `hermes-coder` team + `dispatcher` / `coder` / `qa` profiles and prints an API key per profile.
-   - Store each key: `printf '%s' '<api_key>' > secrets/dense_mem_<p>`.
-   - `docker compose up -d --force-recreate` (workers pick up the MCP credentials).
-7. Verify it works: `make logs`.
-
-`cloud-init.sh` also enables **unattended security upgrades** (`unattended-upgrades`) and runs the stack under root's docker group (acceptable for a single-purpose VPS; the docker group is root-equivalent). Recommended hardening after boot: SSH key auth only (`PasswordAuthentication no` in `/etc/ssh/sshd_config`).
-
-The Kanban **and** dense-mem PostgreSQL backups run automatically every day at 02:00. Adjust the schedule via `crontab -e` if needed.
-
-## 📦 Updating
-
-The containers install profiles from this GitHub repository on startup. To ship changes:
-
-1. `git pull` on the server (updates the local clone that docker compose reads compose/scripts from).
-2. `docker compose up -d --force-recreate` — for compose/script changes or a full profile reinstall.
-3. `make update-profiles` — sufficient for skill-only changes (no restart).
+### Server setup
+1. Paste `cloud-init.sh` into Timeweb Cloud server creation.
+2. Fill `secrets/` after boot.
+3. `bash scripts/memory-bootstrap.sh` → store API keys in `secrets/dense_mem_*`.
+4. `make up`.
 
 ## 📊 Eval & Observability
 
-### Metrics tracked
+### Metrics
 
-| Metric | Source | How |
-|--------|--------|-----|
-| **Task Success Rate** | Kanban `done` vs total | `daily-stats.sh` |
-| **Blocked rate** | Kanban `blocked` tasks | `daily-stats.sh` |
-| **Latency** | `created_at` → `completed_at` | `daily-stats.sh` |
-| **Retract rate** | dense-mem `retracted` records | `daily-stats.sh` |
-| **Review iterations** | coder↔QA loop count per task | `task_runs` profile distinct count |
-| **Cost proxy** | Steps (skill_run) + retries per task | Parsed from `[outcome=success]` tags |
-| **TSR drift** | 7-day rolling average vs today | Persisted to `hermes-data/tsr_history.csv` |
-| **Per-type breakdown** | Success rate by `metadata.type` | `GROUP BY json_extract(metadata, '$.type')` |
+| Metric | Source |
+|--------|--------|
+| Task Success Rate (TSR) | `done` / total tasks |
+| TSR Drift | 7-day rolling avg vs today (alert if >10% drop) |
+| Cost Proxy | Steps + retries from `[outcome=success]` tags |
+| Review Iterations | `task_runs` distinct profile count per review task |
+| Per-type Success Rate | `GROUP BY metadata.type` |
+| pass@k | Consecutive `done` streak |
+| Prioritization | Scored ready tasks count |
+| Exploration | Trigger count + high-iteration tasks (≥3 rounds) |
 
 ### Structured outcome logging
 
-Every `kanban_complete` comment includes a structured tag:
+```bash
+kanban_complete --comment "[outcome=success] <summary> | steps=<N> | retries=<N>"
 ```
-[outcome=success] <summary> | steps=<N> | retries=<N>
-```
-This enables automated metrics collection without external observability tools.
 
 ### Daily stats
 
@@ -167,7 +170,7 @@ This enables automated metrics collection without external observability tools.
 make daily-stats  # requires TELEGRAM_CHAT_ID env var or argument
 ```
 
-Sends a daily summary to Telegram: task counts by status, completed/blocked tasks, memory stats, trajectory warnings, cost proxy, TSR drift alerts, and per-type breakdown. Can be cron'd:
+Sends to Telegram: task counts, completed/blocked lists, memory stats, trajectory warnings, cost proxy, TSR drift, per-type breakdown, pass@k, prioritization, exploration triggers. Cron:
 ```
 0 9 * * * cd /root/hermes-coder-deploy && TELEGRAM_CHAT_ID=<id> make daily-stats
 ```

@@ -85,9 +85,31 @@ metadata:
        - **Score ≤ 4 (anti-pattern)**: Retract any positive QA-owned evidence about this pattern with `mcp_dense_mem_retract_evidence(...)`, then store: `mcp_dense_mem_remember(evidence="anti-pattern: <what went wrong, root cause, what to avoid>", tags=["anti-pattern", "judge:<score>", "project:<project>"], confidence=high)`.
        - On memory call failure, continue without blocking.
    - **If `review-and-merge` returns NEEDS_FIXES** (minor issues, comments):
-       - Move the task back to the coder as **high priority** so the coder loop picks it up next:
-       - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues: <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"` where the board supports it.
-       - If a wrong pattern was likely replayed from the E-pool, say so in the comment so the coder can trace and retire its own evidence during the fix loop (see `execute-task` reference `rag.md`). You can only correct/retract evidence your own QA profile submitted; coder-owned evidence is fixed by the coder.
+       - **Iteration tracking**: Read `metadata.review_iterations` (default 0). Increment by 1: `new_iterations = review_iterations + 1`.
+       - **Exploration escalation** (if iteration ≥ 3):
+         - The coder-QA loop has bounced 3+ times. This signals a systemic issue, not a simple fix.
+         - **Store anti-pattern** (best-effort, never block):
+           ```
+           mcp_dense_mem_remember(
+             evidence="EXPLORATION: Task '<title>' (project <project>) failed <new_iterations> review iterations. Approach tried: <describe the approach from task description>. QA findings across iterations: <summary of recurring issues>. This decomposition strategy did not work — orchestrator must try a different approach.",
+             tags=["anti-pattern", "exploration", "project:<project>", "type:<task_type>"],
+             claims=["exploration:true", "iterations:<new_iterations>"],
+             confidence=high
+           )
+           ```
+           On memory failure, continue without blocking.
+         - Move the task back to the **orchestrator** (not coder) for re-decomposition:
+           ```
+           kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee orchestrator \
+             --comment "EXPLORATION TRIGGERED: Task has been through <new_iterations> review iterations without passing. Previous approach is not working. Re-decompose with a different strategy: try simpler components, different tech choices, or break into smaller pieces. Original QA findings: <summary>"
+           ```
+         - Update metadata: `kanban_update(task_id, metadata: { review_iterations: <new_iterations>, exploration_triggered: true, priority_score: <current_score + 5> })`.
+         - The high priority_score ensures the orchestrator picks this task next.
+         - **Return here** — do not bounce to coder again.
+       - **Normal bounce** (iteration < 3):
+         - Move the task back to the coder as **high priority** so the coder loop picks it up next:
+         - `kanban_move --task {{ env.HERMES_KANBAN_TASK }} --status ready --assignee coder --comment "QA found issues (iteration <new_iterations>): <summary>"` and keep `metadata.type == "review"` (so the coder's `execute-task` routes it to the fix flow) plus `metadata.priority = "high"`, `metadata.review_iterations = <new_iterations>`, `metadata.priority_score = <current_score + 1>`.
+         - If a wrong pattern was likely replayed from the E-pool, say so in the comment so the coder can trace and retire its own evidence during the fix loop (see `execute-task` reference `rag.md`). You can only correct/retract evidence your own QA profile submitted; coder-owned evidence is fixed by the coder.
    - **If `review-and-merge` returns FAILURE** (critical errors, deployment failure, CI crash):
      - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "QA failed: <error details>"`.
 

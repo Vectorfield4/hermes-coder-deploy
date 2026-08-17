@@ -13,7 +13,19 @@ metadata:
 
 ## Steps
 
-1. **Fetch the task**
+### 0. Setup worktree
+- Get the task: `kanban_get_task({{ env.HERMES_KANBAN_TASK }})`.
+- Extract `metadata.project` and `metadata.branch`.
+- Create a worktree for this task:
+  ```
+  cd /workspace/<project>
+  git worktree add /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} <branch>
+  ```
+- All subsequent git operations happen in `/workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
+- If worktree already exists (resume), just use it.
+- Skip worktree setup for `type: deploy` tasks (FTP deploy uses remote operations only).
+
+### 1. Fetch the task
    - Call `kanban_get_task({{ env.HERMES_KANBAN_TASK }})`.
    - Extract `title`, `description`, `metadata`.
    - Ensure the task is in `ready` state.
@@ -76,7 +88,7 @@ metadata:
    - Do not poll or loop — this skill runs once per task.
 
 ## Important Notes
-- Workspace is available at `/workspace/<project>`.
+- Workspace is at `/workspace/<project>-<task_id>` (worktree); the shared repo is at `/workspace/<project>`.
 - For review tasks the `pr_url` should be present in metadata. If missing, block with "No PR URL provided".
 - Release tasks (`type: release`) only need `project` — they create a PR from dev to main, block for HITL approval, then build and create a GitHub Release with zip artifact.
 - Deploy tasks (`type: deploy`) only need `project` — they download the latest release zip from GitHub and upload it to the server via FTP. No HITL gate — the deploy is a mechanical operation.

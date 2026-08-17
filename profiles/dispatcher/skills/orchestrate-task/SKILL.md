@@ -25,6 +25,7 @@ metadata:
 
 ### 3. Load and index project rules (once per project per git hash, cached in the RAG E-pool)
 - Navigate to `/workspace/<project>`.
+- Pull latest changes: `git pull origin dev` (or `main` if `dev` does not exist).
 - Get current git commit hash: `git rev-parse HEAD` → `rules_hash`.
 - Recall the rules index from the E-pool: `mcp_dense_mem_recall_memory(query="project rules for <project> (index)", filter={tags: ["project-rules:<project>", "rules-index"]} where the tool supports filters)`.
 - If the recalled index record exists AND its `rules_hash` claim matches the current `rules_hash` → use the cached rules.
@@ -52,7 +53,7 @@ metadata:
 - For each component, produce:
 - `title` (short)
 - `description` (detailed, copied from parent with specifics)
-- `type` (ui / content / integration)
+- `type` (ui / content / integration / 3d)
 - `rules_keys_needed`: subset of keys from the index relevant to this component
 - `acceptance_criteria`: 2-5 concrete, testable conditions that must be true when the component is done (e.g. "component renders without errors", "passes lint", "matches design spec"). These are the checklist QA will verify.
 

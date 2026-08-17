@@ -13,6 +13,7 @@ Scans the `/workspace` directory, finds Git repositories, reads their context fi
 1.  **Scanning**:
     - Run `ls /workspace` and get the list of directories.
     - For each directory, check whether it is a Git repository (presence of `.git`).
+    - Skip worktrees: directories where `.git` is a file (worktree pointer) instead of a directory (shared repo). Worktrees follow the pattern `<project>-<task_id>`.
 
 2.  **Reading context**:
     - For each repository found, try to read the files in the following priority order:

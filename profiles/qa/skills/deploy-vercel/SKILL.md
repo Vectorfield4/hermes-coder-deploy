@@ -21,6 +21,7 @@ Builds the project at `dev` and uploads it to Vercel as a staging/preview deploy
 - The project is linked to Vercel and the link is committed in the repo at `/workspace/<project>/.vercel/project.json` (contains `orgId` + `projectId`).
 - `VERCEL_TOKEN` available in the QA container environment (injected from `secrets/vercel_token`, shared by all projects).
 - Node.js/npm is available (required for `npx vercel`).
+- This skill operates in the QA worktree at `/workspace/<project>-<task_id>`.
 
 ## Linking a project (one-time setup per project)
 - In the project repo, run once:
@@ -30,7 +31,7 @@ Builds the project at `dev` and uploads it to Vercel as a staging/preview deploy
 ## Instructions
 
 ### 1. Sync `dev`
-- `cd /workspace/<project>`.
+- Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
 - Load retry protocol: `skill_view("deploy-vercel", "references/retry.md")`.
 - `git checkout dev && git pull origin dev`. Apply retry protocol to the pull — transient errors are retried; permanent errors fail immediately.
 

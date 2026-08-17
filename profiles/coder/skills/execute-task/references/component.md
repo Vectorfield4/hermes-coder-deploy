@@ -5,7 +5,7 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
 ## Steps
 
 1. **Identify component type**
-   - Use `metadata.type` if present (ui, content, integration).
+   - Use `metadata.type` if present (ui, content, integration, 3d).
    - Else, infer from `title`/`description`.
 
 2. **Recall related experience (RAG E-pool)**
@@ -14,7 +14,20 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - Pass relevant recalled patterns/decisions into the skill call as advisory context.
    - Graceful degradation: on MCP failure or empty results, continue without recalled context.
 
-3. **Invoke the right skill**
+3. **Fetch latest and rebase** (parallel-safe git flow)
+   - Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
+   - Fetch the latest changes from origin:
+     ```
+     git fetch origin <branch>
+     ```
+   - Rebase on the latest state of the branch:
+     ```
+     git rebase origin/<branch>
+     ```
+   - If rebase conflict: resolve it (see `resolve-merge-conflict` skill — you are already in the worktree on the correct branch, so skip the "Switch to the PR branch" step) or abort and report.
+   - This ensures the coder works on top of any changes pushed by other parallel coders.
+
+4. **Invoke the right skill**
    - Route by the explicit type → skill map below. The map is **authoritative**: `skill_discover(type)` alone is ambiguous because several skills share the `ui` / `content` tags (e.g. `ui` matches `ui-implementer`, `ui-architect`, `simple-task-executor`, `threejs-scene-builder`).
    - Type-to-skill mapping (standardized stack, see project `AGENTS.md`):
      - `ui` → `ui-implementer` (or `simple-task-executor` for quick forms/tables)
@@ -31,9 +44,16 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
      - content → `references/react.md`, `references/mui.md`
      - any test work → `references/vitest.md`, `references/msw.md`
    - Then call `kanban_heartbeat`.
-   - Each skill should write changes to `/workspace/<project>` on the given `branch`.
+   - Each skill should write changes to the worktree directory.
 
-4. **Complete the component task**
+5. **Commit and push**
+   - Add all changes: `git add .`
+   - Commit: `git commit -m "Task #<task_id>: <description>"`
+   - Push: `git push origin <branch>`
+   - If push fails due to conflict (another coder pushed first): fetch → rebase → push again.
+   - Load retry protocol for push: `skill_view("create-pr", "references/retry.md")`.
+
+6. **Complete the component task**
    - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "Component implemented."`
      - Then store the outcome as experience (best-effort): follow the `remember` procedure in `references/rag.md` — a concise summary of what was implemented and the key decisions. Do not block task completion on memory writes.
    - On failure: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`

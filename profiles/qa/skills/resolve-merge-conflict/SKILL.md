@@ -5,7 +5,9 @@ description: Automatically resolves merge conflicts.
 
 # Resolve Merge Conflict
 
-1. Switch to the PR branch (`feature/<task_id>-<sanitized_title>`, from the task metadata).
+This skill works in both contexts: shared repo (`/workspace/<project>`) and worktree (`/workspace/<project>-<task_id>`). If called from a worktree, you are already on the correct branch — skip step 1.
+
+1. Ensure you are on the PR branch (`feature/<task_id>-<sanitized_title>`). If in the shared repo, switch to it first.
 2. Run `git fetch origin && git merge origin/<base_branch>`.
 3. If there are no conflicts — success.
 4. If there are conflicts:

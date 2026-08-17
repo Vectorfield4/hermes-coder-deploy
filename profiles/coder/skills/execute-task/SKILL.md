@@ -11,6 +11,20 @@ metadata:
 ## Input
 - Task ID from `{{ env.HERMES_KANBAN_TASK }}`.
 
+## Steps
+
+### 0. Setup worktree
+- Get the task: `kanban_get_task({{ env.HERMES_KANBAN_TASK }})`.
+- Extract `metadata.project` and `metadata.branch`.
+- Skip worktree setup for `type: init` tasks (project may not exist yet).
+- Create a worktree for this task:
+  ```
+  cd /workspace/<project>
+  git worktree add /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} <branch>
+  ```
+- All subsequent git operations happen in `/workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
+- If worktree already exists (resume), just use it.
+
 ## Dispatch
 
 1. **Fetch the task**
@@ -31,6 +45,6 @@ metadata:
 - Call `kanban_heartbeat` before each `skill_run` and before long-running operations (validation).
 - On failure of any step: capture the error and `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`.
 - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] <summary> | steps=<N> | retries=<N>"` — see the loaded flow for the exact comment. Track the number of skill_run calls (steps) and retry attempts for metrics.
-- The workspace is at `/workspace/<project>`; the branch is shared across all component tasks.
+- The workspace is at `/workspace/<project>-<task_id>` (worktree); the shared repo is at `/workspace/<project>`.
 - Start the coder agent with `--skip_context_files` to avoid overloading the global memory.
 - Experience memory (E-pool via dense-mem, see `references/rag.md`): recall before executing, remember after success. Memory tools are exposed as `mcp_dense_mem_*`; a failed memory call must never block the task.

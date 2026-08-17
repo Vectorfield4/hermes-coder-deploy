@@ -13,6 +13,8 @@ metadata:
 ## Overview
 This skill is called by `execute-qa-task` for `type: release` tasks. It opens a PR from `dev` to `main`, blocks the task for human approval (HITL gate), merges after the human unblocks, then builds the project and creates a GitHub Release with the zip artifact.
 
+**Note**: This skill operates in the QA worktree at `/workspace/<project>-<task_id>`. All git operations and builds happen in the worktree, ensuring full isolation from coder worktrees.
+
 ## When to Use
 - This skill is called automatically by `execute-qa-task` for `type: release` tasks.
 - Triggered by the `/release` Telegram command.

@@ -20,9 +20,11 @@ This skill is responsible for the final steps of the development process: valida
 ## Instructions
 
 ### 1. Input
-- Receive `project` and `branch` — the shared branch `feature/<task_id>-<sanitized_title>` created by the orchestrator and already checked out in `/workspace/<project>`.
+- Receive `project` and `branch` — the shared branch `feature/<task_id>-<sanitized_title>` created by the orchestrator.
+- The PR task runs in its own worktree (created by `execute-task` step 0).
 
 ### 2. Local Validation
+- Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
 - Read the project context from memory (from `project-discover` or cached rules).
 - Extract validation commands from the project context (e.g., from `AGENTS.md` or `.hermes.md`).
 - If no validation commands are found, skip validation with a warning.
@@ -49,6 +51,15 @@ This skill is responsible for the final steps of the development process: valida
 ### 5. Output
 - Extract the PR number from the `gh` command output.
 - Return success with the PR number to `execute-task`.
+
+### 6. Cleanup worktrees
+- After PR is created, clean up all worktrees for this branch:
+  ```
+  cd /workspace/<project>
+  git worktree list | grep "<branch>" | awk '{print $1}' | xargs -I {} git worktree remove {}
+  ```
+- Delete the remote branch after merge (handled by `cleanup-branch` skill).
+- Do NOT delete the main `/workspace/<project>` directory — it is the shared repo.
 
 ## Tools
 - `run_command(command, cwd)` (for git, gh, and validation commands)

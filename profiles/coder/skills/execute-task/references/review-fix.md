@@ -22,7 +22,12 @@ Loaded by `execute-task` when QA moved the task back to the coder for fixes. The
    - This is best-effort and must never block the fix.
 
 4. **Apply fixes**
-   - Check out `branch` in `/workspace/<project>`.
+   - Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
+   - Fetch and rebase on latest:
+     ```
+     git fetch origin <branch>
+     git rebase origin/<branch>
+     ```
    - Fix each reported issue.
    - Follow the project `AGENTS.md` and the relevant `frontend-stack` reference via `skill_view("frontend-stack", "references/<file>.md")` when touching UI, data, or tests.
    - Call `kanban_heartbeat` before long operations.

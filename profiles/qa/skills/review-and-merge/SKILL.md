@@ -13,6 +13,8 @@ metadata:
 ## Overview
 This skill is called by `execute-qa-task` to verify the CI status of a PR, merge it to `dev`, and trigger a Vercel staging deployment. Merging to `dev` automatically deploys to Vercel staging.
 
+**Note**: This skill operates in the QA worktree at `/workspace/<project>-<task_id>`. Local git operations happen in the worktree; remote operations (`gh`) work regardless of directory.
+
 ## When to Use
 - This skill is called automatically by `execute-qa-task` for `type: review` tasks.
 - **Do not use** this skill manually.

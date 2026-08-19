@@ -3,7 +3,7 @@ name: ui-implementer
 description: Creates UI components with React + MUI on the standardized stack
 metadata:
   hermes:
-    tags: [ui, component]
+    tags: [atom, molecule, organism, ui, react, mui, responsive, animation]
     related_skills: [ui-architect]
 ---
 

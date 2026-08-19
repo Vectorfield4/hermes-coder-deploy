@@ -3,7 +3,7 @@ name: narrative-designer
 description: Designs the narrative and story of the page
 metadata:
   hermes:
-    tags: [content]
+    tags: [narrative, story-arc, b2b, marketing, landing, copy]
     related_skills: [content-strategist]
 ---
 

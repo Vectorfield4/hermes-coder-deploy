@@ -3,7 +3,7 @@ name: technical-planner
 description: Breaks work down into subtasks and delegates to subagents
 metadata:
   hermes:
-    tags: [planning, delegation]
+    tags: [planning, architecture, decomposition]
 ---
 
 # Technical Planner

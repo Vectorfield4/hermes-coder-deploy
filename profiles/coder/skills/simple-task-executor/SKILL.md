@@ -3,7 +3,7 @@ name: simple-task-executor
 description: Quickly completes simple tasks (forms, tables, components) on the standardized stack
 metadata:
   hermes:
-    tags: [ui, form, quick]
+    tags: [atom, molecule, form, table, simple]
     related_skills: [ui-implementer]
 ---
 

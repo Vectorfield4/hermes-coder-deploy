@@ -7,7 +7,7 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
 0. **Validate acceptance criteria** (before doing any work)
    - Read `metadata.acceptance_criteria` if present.
    - For each criterion:
-     - Does it trace to the original task `description`? If it is invented or unrelated → drop it from your checklist (do NOT reject the task, just ignore fabricated criteria).
+      - Does it trace to the original task `description`? If it is invented or unrelated → drop it from your checklist and proceed.
      - Is it verifiable via the project's validation commands (lint/test/build)? If not → note it as "manual review only" so you know QA will eyeball it.
    - If `acceptance_criteria` is missing entirely → proceed but add a comment: `"No acceptance_criteria in metadata — QA will review against description only"`.
    - This prevents executing against wrong criteria and wastes fewer review cycles.
@@ -35,23 +35,22 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
    - If rebase conflict: resolve it (see `resolve-merge-conflict` skill — you are already in the worktree on the correct branch, so skip the "Switch to the PR branch" step) or abort and report.
    - This ensures the coder works on top of any changes pushed by other parallel coders.
 
-4. **Invoke the right skill**
-   - Route by the explicit type → skill map below. The map is **authoritative**: `skill_discover(type)` alone is ambiguous because several skills share the `ui` / `content` tags (e.g. `ui` matches `ui-implementer`, `ui-architect`, `simple-task-executor`, `threejs-scene-builder`).
-   - Type-to-skill mapping (standardized stack, see project `AGENTS.md`):
-     - `ui` → `ui-implementer` (or `simple-task-executor` for quick forms/tables)
-     - `3d`/`threejs` → `threejs-scene-builder`
-     - `integration` → `integration-specialist`
-     - `content` → `content-strategist` / `narrative-designer`
-     - planning → `technical-planner`
-   - Call `skill_run(<mapped_skill>, project, branch, description, rules_context)`.
-   - Fallback: if the mapped skill is not installed, call `skill_discover(type)`; if still nothing is found, `skill_run(simple-task-executor, project, branch, description)`.
-   - Before each `skill_run`, load the matching `frontend-stack` reference via `skill_view("frontend-stack", "references/<file>.md")`:
-     - ui → `references/mui.md`, `references/react.md` (plus `zustand.md` / `tanstack-query.md` when state/data is involved)
-     - 3d / threejs → `references/threejs-r3f.md`
-     - integration → `references/react-router.md`, `references/tanstack-query.md`, `references/zustand.md`, `references/msw.md`
-     - content → `references/react.md`, `references/mui.md`
-     - any test work → `references/vitest.md`, `references/msw.md`
+4. **Discover and invoke the right skill**
+   - The orchestrator describes components using architectural language and tags, NOT skill names. You discover the right skill by tag matching.
+   - **Collect tags** from:
+     - `metadata.tags` — architectural tags set by the orchestrator (atomic level, purpose, behavior, domain)
+     - `metadata.type` — broad type (ui / 3d / content / integration)
+     - Keywords from the component's `title` and `description` that match architectural concepts
+   - **Discover:** call `skill_discover(tags)` with the combined tag set. The system returns skills ranked by tag overlap. Pick the skill with the highest match.
+   - **Load stack references** based on the discovered skill:
+     - UI/layout → `references/mui.md`, `references/react.md`
+     - 3D → `references/threejs-r3f.md`
+     - Animation → `references/gsap.md`
+     - State/forms → `references/zustand.md`, `references/react-hook-form.md`, `references/zod.md`
+     - Data → `references/tanstack-query.md`
+   - **Invoke:** `skill_run(<discovered_skill>, project, branch, description, rules_context)`.
    - Then call `kanban_heartbeat`.
+   - **Fallback:** if no skill matches or `skill_discover` returns empty → `skill_run(simple-task-executor, project, branch, description)` as catch-all.
    - Each skill should write changes to the worktree directory.
 
 5. **Quality check and commit**

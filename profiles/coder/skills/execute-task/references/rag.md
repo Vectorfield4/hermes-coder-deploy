@@ -16,7 +16,7 @@ Loaded by `execute-task` for `component` and `review` flows. Provides RAG over p
 - Use a short goal-oriented query (e.g. `react-hook-form + zod auth form with MUI for <project>`) rather than a long paste.
 - Distinguish rules from experience: rule records are tagged `project-rules:<project>` (recalled via `references/memory.md`); everything else is advisory experience.
 - Treat the top results as context hints (patterns, prior decisions, known pitfalls). If a result carries high confidence and a verified source, you may reuse it as a template — but still validate.
-- **Recall anti-patterns**: call `mcp_dense_mem_recall_memory(query="<goal>", filter={tags: ["anti-pattern", "project:<project>"]})`. If recalled, these are known failures — do NOT repeat them.
+- **Recall anti-patterns**: call `mcp_dense_mem_recall_memory(query="<goal>", filter={tags: ["anti-pattern", "project:<project>"]})`. If recalled, these are known failures — use a different approach.
 - **Recall exploration anti-patterns**: call `mcp_dense_mem_recall_memory(query="<goal>", filter={tags: ["anti-pattern", "exploration", "project:<project>"]})`. These are decomposition strategies that failed after ≥3 review iterations. Do NOT repeat the same approach.
 - Graceful degradation: on failure or empty results, proceed without context.
 

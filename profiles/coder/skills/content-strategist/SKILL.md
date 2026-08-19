@@ -3,7 +3,7 @@ name: content-strategist
 description: Creates a content plan based on the narrative
 metadata:
   hermes:
-    tags: [content]
+    tags: [copy, headline, cta, microcopy, marketing, seo]
     related_skills: [narrative-designer]
 ---
 

@@ -3,7 +3,7 @@ name: integration-specialist
 description: Assembles ready components into a single application (routes, providers)
 metadata:
   hermes:
-    tags: [integration]
+    tags: [state, data-fetching, form, animation, scroll, gsap, zustand, tanstack]
     related_skills: [ui-architect, threejs-scene-builder]
 ---
 

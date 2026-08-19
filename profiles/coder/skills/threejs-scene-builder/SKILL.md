@@ -3,7 +3,7 @@ name: threejs-scene-builder
 description: Creates 3D scenes with Three.js (React Three Fiber)
 metadata:
   hermes:
-    tags: [ui, 3d, threejs]
+    tags: [3d-scene, organism, interactive, animation, scroll, b2b]
 ---
 
 # Three.js Scene Builder

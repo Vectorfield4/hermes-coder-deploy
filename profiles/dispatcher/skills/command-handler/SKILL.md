@@ -1,6 +1,6 @@
 ---
 name: command-handler
-description: Handles Telegram commands and creates Kanban tasks with automatic project detection
+description: Handles Telegram commands: task creation, Q&A, feedback, project management, releases, and deploys
 metadata:
   hermes:
     tags: [telegram, gateway, dispatcher]
@@ -17,49 +17,17 @@ metadata:
 ### 1. `/task <description>`
 Creates a task for the orchestrator with automatic project detection.
 
-**Algorithm**:
-1. Extract the description from the message (everything after `/task`).
-2. If the description is empty → reply: "Please provide a task description."
-3. Guardrails: reject the description if it is shorter than 10 characters or contains any of these tokens: `curl`, `wget`, `eval`, `exec`, `sudo`, `rm -rf`, `<!--`, `<script` — reply: "Description contains disallowed content."
-4. Get the project list from memory: `memory_read(projects)`. If there are no projects → `project = "default"`.
-5. Match the description against the projects:
-- Search for keywords in the description: project names, their aliases, or the words "site", "project", "repo" + context.
-- Use the LLM for semantic analysis: "Which project does this task belong to?"
-- If a matching project is found → use it.
-- If not found → `project = "default"`.
-6. Determine the task type:
-- If the description contains "bug", "fix", "error" → `type = "bugfix"`
-- Otherwise → `type = "feature"`
-7. Determine priority:
-- If the description contains "urgent", "critical", "срочно", "быстро" → `priority = "urgent"`
-- If the description contains "bug", "fix", "error" → `priority = "high"`
-- Otherwise → `priority = "normal"`
-8. Compute initial priority_score (age=0 at creation, use type_weight from the scoring table):
-- `type_weight`: bugfix=4, release=4, deploy=3, review=3, feature=2, ui=2, content=1, integration=2, init=1
-- `age_urgency = 0` (task is brand new)
-- `iteration_penalty = 0` (first iteration)
-- `dependency_bonus = 0` (no dependents yet)
-- `priority_score = type_weight` (sum of all components at creation)
-- If `priority == "urgent"` → add +2 bonus to `priority_score`.
-- If `priority == "high"` → add +1 bonus to `priority_score`.
-9. Load retry protocol: `skill_view("command-handler", "references/retry.md")`.
-10. Create a task in Kanban. Apply retry protocol to `kanban_create` — transient errors are retried; permanent errors fail immediately:
-kanban_create(
-title: "{{ description }}",
-description: "{{ description }}",
-assignee: orchestrator,
-status: ready,
-metadata: {
-project: "{{ project }}",
-type: "{{ type }}",
-priority: "{{ priority }}",
-priority_score: {{ priority_score }},
-review_iterations: 0,
-chat_id: "{{ env.TELEGRAM_CHAT_ID }}",
-source: "telegram"
-}
-)
-11. Reply: "✅ Task #<id> created for project **{{ project }}** (score: {{ priority_score }}) and handed off to the orchestrator."
+**Flow:** Load `skill_view("command-handler", "references/task-flow.md")` and follow it.
+
+### 1a. `/ask <question>`
+Answers a question using RAG recall. No task is created.
+
+**Flow:** Load `skill_view("command-handler", "references/ask-flow.md")` and follow it.
+
+### 1b. `/feedback [task_id] <text>`
+Processes user feedback. The LLM decides what action to take (create refactoring task, store in memory, or both).
+
+**Flow:** Load `skill_view("command-handler", "references/feedback-flow.md")` and follow it.
 
 ### 2. `/project add <url> [name]`
 Adds a new project and creates an initialization task **directly for the coder**.
@@ -162,7 +130,16 @@ Unblocks a blocked task (HITL approval). The task must belong to the user (by `c
 > Note: Use `/status` to see your blocked tasks and their IDs.
 
 ### 7. `/help`
-Shows the list of available commands.
+Shows the list of available commands:
+- `/task <description>` — create a task for the orchestrator
+- `/ask <question>` — ask a question (RAG-powered answer)
+- `/feedback [task_id] <text>` — give feedback (may create a task or update memory)
+- `/project add <url> [name]` — register a project
+- `/status [id]` — show task status
+- `/cancel <id>` — cancel a task
+- `/release <project>` — create a release PR (dev → main)
+- `/deploy-ftp <description>` — deploy via FTP
+- `/unblock <id>` — approve a blocked task
 
 ### 8. `/deploy-ftp <description>`
 Creates a deploy task for QA that downloads the latest release zip from GitHub and uploads it to the server via FTP.

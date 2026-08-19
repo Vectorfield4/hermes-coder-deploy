@@ -28,7 +28,7 @@ All services share the `hermes-data` volume (Kanban + agent memory) — it is th
 Each skill is a Markdown instruction for the agent. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
 
 ### dispatcher
-- **command-handler** — Telegram gateway: `/task`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help`. Stamps initial `priority_score` on task creation.
+- **command-handler** — Telegram gateway: `/task`, `/ask`, `/feedback`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help`. Stamps initial `priority_score` on task creation. Detects `refactoring` type from keywords.
 - **orchestrate-task** — decomposes tasks into component sub-tasks (UI / content / integration) with `acceptance_criteria`, coordinates a shared branch and final PR task. Recalls anti-patterns before decomposing; handles exploration re-decomposition.
 - **prioritize-tasks** — composite scoring (type + aging + iterations + unblocking). Advisory metadata for operators.
 
@@ -51,14 +51,19 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 
 ```
 /task → orchestrator → decompose into components → coder (parallel) → PR → QA review
-                                                                        ↓
-                                                              ┌─── PASS → merge to dev → Vercel staging
-                                                              │
-                                                              └─── FAIL → coder fix → QA re-review
-                                                                                       ↓
-                                                                              ≥3 iterations → EXPLORATION
-                                                                                               ↓
-                                                                                         orchestrator re-decompose
+       │                                                                    ↓
+       │                                                          ┌─── PASS → merge to dev → Vercel staging
+       │                                                          │
+       │                                                          └─── FAIL → coder fix → QA re-review
+       │                                                                                       ↓
+       │                                                                              ≥3 iterations → EXPLORATION
+       │                                                                                               ↓
+       │                                                                                         orchestrator re-decompose
+       │
+       └─ (type: refactoring) → targeted decomposition → coder (targeted edits) → PR → QA review
+
+/ask → RAG recall → answer (no task created)
+/feedback → LLM analyzes → create refactoring task / store in memory / both
 ```
 
 **Release:** `/release` → QA creates PR dev→main → blocked (HITL) → `/unblock` → merge → build → GitHub Release.

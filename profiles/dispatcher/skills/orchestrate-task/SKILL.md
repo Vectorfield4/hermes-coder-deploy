@@ -53,6 +53,45 @@ metadata:
 
 ### 5. Decompose the task
 
+**If `metadata.type == "refactoring"`** → skip to step 5-refactoring below. The rest of step 5 (5a–5e) applies only to feature/bugfix/ui/integration/content tasks.
+
+#### 5-refactoring. Targeted decomposition
+
+Refactoring tasks change specific parts of existing code without full regeneration.
+
+1. **Identify the target**
+   - Read `metadata.refactoring_target` (set by command-handler from the user's description).
+   - If not set, infer from `description`: what file, module, pattern, or behavior needs to change.
+   - Navigate to `/workspace/<project>` and scan for the target:
+     - `find . -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" | head -50` — list code files.
+     - Use LLM: "Given this refactoring goal: <description>, which files are most likely affected?"
+
+2. **Read and understand current code**
+   - Read the identified files.
+   - Understand the current structure, dependencies, and patterns.
+   - Identify what specifically needs to change and what must be preserved.
+
+3. **Plan targeted sub-tasks**
+   - Each sub-task = one specific, bounded change to existing code.
+   - For each sub-task, produce:
+     - `target_files` — exact file paths to modify
+     - `change_description` — what to change (edit, not rewrite)
+     - `preserve` — what behavior/structure must remain intact
+     - `acceptance_criteria` — how to verify the change is correct:
+       - "File X modified: <specific change>"
+       - "Behavior preserved: <what still works the same way>"
+       - "Lint/test/build passes" (from project AGENTS.md)
+   - Tags: `["refactoring", "<target-module>", "<change-type>"]` where change-type is one of: rename, extract, inline, restructure, optimize, cleanup.
+   - `type: "refactoring"` for all sub-tasks.
+
+4. **Self-check**
+   - Every sub-task traces to the original `refactoring_target` — no invented changes.
+   - Each sub-task is bounded: it touches 1-3 files max. If larger → split further.
+   - Acceptance criteria are verifiable (lint/test/build or manual comparison).
+   - Changes are minimal — refactoring preserves external behavior.
+
+5. **Proceed to step 6** (generate branch name, create sub-tasks, PR task, link, dependencies) — same as feature flow.
+
 #### 5a. Domain classification
 Classify the task into a domain BEFORE decomposing:
 - **Page/landing** → narrative arc required, marketing blocks, scroll animations, 3D elements possible

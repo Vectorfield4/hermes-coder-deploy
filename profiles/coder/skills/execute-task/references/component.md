@@ -4,6 +4,12 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
 
 ## Steps
 
+0. **Check if this is a refactoring task**
+   - If `metadata.type == "refactoring"` → skip to the **Refactoring path** section below.
+   - Otherwise → continue with the standard flow.
+
+## Standard flow (feature/bugfix/ui/content/integration)
+
 0. **Validate acceptance criteria** (before doing any work)
    - Read `metadata.acceptance_criteria` if present.
    - For each criterion:
@@ -71,7 +77,40 @@ Loaded by `execute-task` after the project rules have been loaded (see `referenc
      - Then store the outcome as experience (best-effort): follow the `remember` procedure in `references/rag.md` — a concise summary of what was implemented and the key decisions. Do not block task completion on memory writes.
    - On failure: 
      - `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error>"`
-     - Clean up worktree (best-effort, never block on cleanup):
-       ```
-       cd /workspace/<project> && git worktree remove --force /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} 2>/dev/null || true
-       ```
+   - Clean up worktree (best-effort, never block on cleanup):
+     ```
+     cd /workspace/<project> && git worktree remove --force /workspace/<project>-{{ env.HERMES_KANBAN_TASK }} 2>/dev/null || true
+     ```
+
+## Refactoring path (`metadata.type == "refactoring"`)
+
+This path applies targeted edits to existing code instead of generating new components.
+
+1. **Validate acceptance criteria**
+   - Read `metadata.acceptance_criteria` if present.
+   - For each criterion: does it trace to the original task `description`? If invented → drop it.
+   - Read `metadata.target_files` — the exact files to modify.
+
+2. **Fetch latest and rebase**
+   - Same as standard flow step 3.
+
+3. **Read current code**
+   - Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
+   - Read each file in `metadata.target_files`.
+   - Understand the current structure and what needs to change.
+
+4. **Apply targeted edits**
+   - For each file in `metadata.target_files`:
+     - Use the `edit` tool to make the specific changes described in the component's `change_description`.
+     - Preserve external behavior — refactoring changes internals, not the interface.
+   - Do NOT regenerate files from scratch. Edit only what needs to change.
+   - If the change is complex (touches >3 files or >100 lines of diff) → split into smaller edits and commit each incrementally.
+
+5. **Quality check and commit**
+   - Verify against project validation commands: `npm run lint`, `npm run test`, `npm run build`.
+   - Verify behavior is preserved: existing tests still pass, no API changes.
+   - Commit: `git commit -m "Task #<task_id>: <description>"`
+   - Push: `git push origin <branch>`
+
+6. **Complete the component task**
+   - Same as standard flow step 6.

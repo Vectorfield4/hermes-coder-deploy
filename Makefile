@@ -1,4 +1,4 @@
-.PHONY: init up down logs backup memory-bootstrap update-profiles check-secrets daily-stats
+.PHONY: init up down logs backup memory-bootstrap update-profiles check-secrets daily-stats setup restart
 
 init:
 	bash scripts/init.sh
@@ -8,6 +8,15 @@ check-secrets:
 
 up:
 	bash scripts/check-secrets.sh && docker compose up -d
+
+restart:
+	docker compose up -d --force-recreate dispatcher coder qa telegram-bot
+
+setup:
+	bash scripts/check-secrets.sh
+	docker compose up -d memory-db embedding dense-mem
+	bash scripts/memory-bootstrap.sh
+	docker compose up -d --force-recreate dispatcher coder qa telegram-bot
 
 down:
 	docker compose down

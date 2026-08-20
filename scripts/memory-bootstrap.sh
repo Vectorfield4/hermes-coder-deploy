@@ -1,18 +1,16 @@
 #!/bin/bash
 # Bootstraps the dense-mem memory stack: creates the "hermes-coder" team and
-# one profile per worker (dispatcher / coder / qa), then prints the API keys
-# to paste into secrets/dense_mem_<profile>.
+# one profile per worker (dispatcher / coder / qa), then saves API keys directly
+# into secrets/dense_mem_<profile>.
 #
 # Prerequisites:
 #   - `make init` done and CONTROL_PORTAL_TOKEN set in secrets/control_portal_token
-#   - the stack running:  make up  (at least memory-db + dense-mem)
+#   - the memory stack running:  docker compose up -d memory-db embedding dense-mem
 #
 # Usage:
 #   bash scripts/memory-bootstrap.sh
 #
-# After pasting the keys, recreate the workers so Hermes re-registers the MCP
-# server with the correct credentials:
-#   docker compose up -d --force-recreate
+# Idempotent — safe to run multiple times. Existing teams/profiles are reused.
 
 set -u
 
@@ -46,37 +44,83 @@ if [ "$UP" -ne 1 ]; then
 fi
 echo "✅ Control portal is up."
 
-echo "Creating team 'hermes-coder'..."
-TEAM_RESPONSE=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"name":"hermes-coder"}' "$BASE/teams")
-echo "Team response: $TEAM_RESPONSE"
-echo ""
+# --- Team ---
+TEAM_ID=""
 
-TEAM_ID=$(printf '%s' "$TEAM_RESPONSE" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+# Try to find existing team
+TEAMS_RESPONSE=$(curl -fsS -H "$AUTH" "$BASE/teams" 2>/dev/null || echo "[]")
+TEAM_ID=$(printf '%s' "$TEAMS_RESPONSE" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"hermes-coder".*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
 
+# Also try reversed JSON key order
 if [ -z "$TEAM_ID" ]; then
-  echo "⚠️  Could not extract the team id (it may already exist). Listing teams:"
-  curl -fsS -H "$AUTH" "$BASE/teams"
-  echo ""
-  echo "➡️  Find the 'hermes-coder' team id above and create the profiles manually:"
-  echo "   POST /control/api/teams/<team-id>/profiles  {\"name\":\"<profile>\"}"
-  exit 1
+  TEAM_ID=$(printf '%s' "$TEAMS_RESPONSE" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*"name"[[:space:]]*:[[:space:]]*"hermes-coder".*/\1/p' | head -n1)
 fi
 
+if [ -z "$TEAM_ID" ]; then
+  echo "Creating team 'hermes-coder'..."
+  TEAM_RESPONSE=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" \
+    -d '{"name":"hermes-coder"}' "$BASE/teams")
+  TEAM_ID=$(printf '%s' "$TEAM_RESPONSE" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+  if [ -z "$TEAM_ID" ]; then
+    echo "❌ Could not create or find team 'hermes-coder'."
+    echo "   Response: $TEAM_RESPONSE"
+    exit 1
+  fi
+  echo "✅ Team created (id: $TEAM_ID)"
+else
+  echo "✅ Team 'hermes-coder' exists (id: $TEAM_ID)"
+fi
+
+# --- Profiles ---
+extract_key() {
+  printf '%s' "$1" | sed -n 's/.*"api_key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
+}
+
 for profile in dispatcher coder qa; do
-  echo "Creating profile '$profile'..."
-  RESPONSE=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" \
-    -d "{\"name\":\"$profile\"}" "$BASE/teams/$TEAM_ID/profiles")
-  echo "Profile '$profile' response: $RESPONSE"
-  echo ""
+  FILE="secrets/dense_mem_${profile}"
+
+  # Try creating the profile
+  RESPONSE=$(curl -s -w "\n%{http_code}" -X POST -H "$AUTH" -H "Content-Type: application/json" \
+    -d "{\"name\":\"$profile\"}" "$BASE/teams/$TEAM_ID/profiles" 2>/dev/null)
+  HTTP_CODE=$(printf '%s' "$RESPONSE" | tail -n1)
+  BODY=$(printf '%s' "$RESPONSE" | sed '$d')
+
+  if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+    API_KEY=$(extract_key "$BODY")
+    if [ -n "$API_KEY" ]; then
+      printf '%s' "$API_KEY" > "$FILE"
+      echo "✅ Profile '$profile' created → $FILE"
+    else
+      echo "⚠️  Profile '$profile' created but could not extract API key."
+      echo "   Response: $BODY"
+    fi
+  elif [ "$HTTP_CODE" = "409" ] || [ "$HTTP_CODE" = "400" ]; then
+    # Profile already exists — try to list and extract key
+    echo "   Profile '$profile' already exists, fetching key..."
+    PROFILES=$(curl -fsS -H "$AUTH" "$BASE/teams/$TEAM_ID/profiles" 2>/dev/null || echo "[]")
+    API_KEY=$(printf '%s' "$PROFILES" | sed -n "/\"name\"[[:space:]]*:[[:space:]]*\"$profile\"/{n;p}" | sed -n 's/.*"api_key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+
+    # Fallback: try extracting from the full response with a broader pattern
+    if [ -z "$API_KEY" ]; then
+      API_KEY=$(printf '%s' "$PROFILES" | tr '\n' ' ' | sed -n "s/.*\"name\"[[:space:]]*:[[:space:]]*\"${profile}\"[^}]*\"api_key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n1)
+    fi
+
+    if [ -n "$API_KEY" ]; then
+      printf '%s' "$API_KEY" > "$FILE"
+      echo "✅ Profile '$profile' key saved → $FILE"
+    else
+      echo "⚠️  Could not extract API key for existing profile '$profile'."
+      echo "   Check manually: curl -H 'Authorization: Bearer $TOKEN' $BASE/teams/$TEAM_ID/profiles"
+    fi
+  else
+    echo "❌ Failed to create profile '$profile' (HTTP $HTTP_CODE)"
+    echo "   Response: $BODY"
+  fi
 done
 
+echo ""
 echo "===================================================================="
-echo "✅ Done. Copy the API key (api_key / secret field) from each profile"
-echo "   response into the matching file (no newline):"
-echo "     printf '%s' '<api_key>' > secrets/dense_mem_dispatcher"
-echo "     printf '%s' '<api_key>' > secrets/dense_mem_coder"
-echo "     printf '%s' '<api_key>' > secrets/dense_mem_qa"
-echo "   (telegram-bot reuses the dispatcher key.)"
-echo "   Then:  docker compose up -d --force-recreate"
+echo "✅ All keys saved to secrets/dense_mem_*"
+echo "   Now restart workers to pick up the new credentials:"
+echo "     docker compose up -d --force-recreate"
 echo "===================================================================="

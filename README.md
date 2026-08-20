@@ -149,10 +149,37 @@ One plain file per value in `secrets/` (gitignored). `make init` creates empty p
 
 - Compose mounts each into `/run/secrets/<name>` (K8s-style file mount, **not encrypted**).
 - `load-secrets.sh` implements Docker `*_FILE` convention. Fails fast on missing files.
-- `check-secrets.sh` (run by `make up`) validates required secrets are non-empty.
-- Required: `telegram_bot_token`, `github_token`, `vercel_token`, `openai_api_key`, `dense_mem_{dispatcher,coder,qa}`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_*`, `vercel_org_id` / `vercel_project_id`.
+- `check-secrets.sh` (run by `make up` / `make setup`) validates required secrets are non-empty.
+- Required: `token`, `telegram_allowed_chats`, `github_token`, `openai_api_key`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_*`, `vercel_token`, `vercel_org_id` / `vercel_project_id`.
+- `dense_mem_{dispatcher,coder,qa}` are **generated automatically** by `make setup` — do not fill manually.
 
 ## 🚀 Deployment
+
+### First deploy
+
+```bash
+make init                              # create secrets/ placeholders
+# fill required secrets (see above)
+printf '%s' '<token>'                  > secrets/token
+printf '%s' '<chat_id>'                > secrets/telegram_allowed_chats
+printf '%s' '<github_pat>'             > secrets/github_token
+printf '%s' '<deepseek_api_key>'       > secrets/openai_api_key
+printf '%s' '<pg_password>'            > secrets/postgres_password
+printf '%s' '<portal_token>'           > secrets/control_portal_token
+printf '%s' '<deepseek_api_key>'       > secrets/ai_verifier_api_key
+make setup                             # start stack + generate memory keys
+make logs                              # verify all 7 services are up
+```
+
+### Ongoing
+
+```bash
+make up                                # start (validates secrets first)
+make restart                           # force-recreate all containers
+make logs                              # tail logs
+make down                              # stop all containers
+make update-profiles                   # hot-reload skills in running containers
+```
 
 ### Vercel staging (automatic)
 Every PR merged by QA to `dev` → `deploy-vercel` creates a staging preview. `project-init` links Vercel automatically when `VERCEL_TOKEN` is set.
@@ -160,11 +187,10 @@ Every PR merged by QA to `dev` → `deploy-vercel` creates a staging preview. `p
 ### Production FTP (on demand)
 `/deploy-ftp <project>` → QA downloads latest GitHub Release zip → FTP to server. Requires `ftp_*` in `secrets/`.
 
-### Server setup
-1. Paste `cloud-init.sh` into Timeweb Cloud server creation.
-2. Fill `secrets/` after boot.
-3. `bash scripts/memory-bootstrap.sh` → store API keys in `secrets/dense_mem_*`.
-4. `make up`.
+### Server setup (Timeweb Cloud)
+1. Paste `cloud-init.sh` into server creation.
+2. SSH in, fill secrets (see First deploy above).
+3. `make setup`.
 
 ## 📊 Eval & Observability
 

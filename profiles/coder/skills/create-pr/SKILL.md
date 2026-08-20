@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Creates a commit, pushes the shared branch, and opens a Pull Request. Includes local validation.
+description: Creates a commit, pushes the shared branch, and opens a Pull Request.
 license: MIT
 metadata:
   hermes:
@@ -10,69 +10,40 @@ metadata:
 
 # Create PR
 
-## Overview
-This skill is responsible for the final steps of the development process: validating the changes, committing them, pushing the branch, and creating a Pull Request. It is called by `execute-task` for the PR task (`pr_creation: true`).
+Called by `execute-task` for the PR task (`pr_creation: true`). Validates, commits, pushes, opens PR.
 
-## When to Use
-- This skill is called automatically by `execute-task` after all component sub-tasks are complete.
-- **Do not use** this skill manually.
-
-## Instructions
+## Steps
 
 ### 1. Input
-- Receive `project` and `branch` — the shared branch `feature/<task_id>-<sanitized_title>` created by the orchestrator.
-- The PR task runs in its own worktree (created by `execute-task` step 0).
+- Receive `project` and `branch` from task metadata.
+- Navigate to worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
 
-### 2. Local Validation
-- Navigate to the worktree: `cd /workspace/<project>-{{ env.HERMES_KANBAN_TASK }}`.
-- Read the project context from memory (from `project-discover` or cached rules).
-- Extract validation commands from the project context (e.g., from `AGENTS.md` or `.hermes.md`).
-- If no validation commands are found, skip validation with a warning.
-- Execute each validation command (e.g., `npm run lint`, `npm run test`) in the project root.
-- If any command fails:
-  - Collect the error output.
-  - Return an error to `execute-task` with the details.
-  - **Do not proceed** to commit.
+### 2. Validate
+- Read validation commands from project context (AGENTS.md or cached rules).
+- Run each command (e.g. `npm run lint`, `npm run test`).
+- If any fails → return error to `execute-task`. Do not proceed.
 
-### 3. Commit and Push
-- Ensure the current branch is the given `branch` (checkout if needed).
-- Add all changes: `git add .`.
-- Commit: `git commit -m "Task #<task_id>: <description>"`.
-- Load retry protocol: `skill_view("create-pr", "references/retry.md")`.
-- Push with retry: `git push origin <branch>`. Apply the retry protocol — transient errors (timeout, network, 429, 5xx) are retried with exponential backoff; permanent errors (auth, 404) fail immediately.
+### 3. Commit and push
+- Ensure on correct branch. `git add . && git commit -m "Task #<task_id>: <description>"`.
+- Load retry: `skill_view("create-pr", "references/retry.md")`.
+- `git push origin <branch>`. Apply retry — transient errors retried; permanent fail immediately.
 
-### 4. Create Pull Request
-- Load retry protocol: `skill_view("create-pr", "references/retry.md")`.
-- Use `gh pr create` to open a PR. Apply the retry protocol to this call.
-- Title: `"Task #<task_id>: <description>"`.
-- Body: Include a summary of changes (can be taken from the plan).
-- Base branch: `dev` (staging branch). Production release to `main` is handled separately via `/release`.
+### 4. Create PR
+- `gh pr create --title "Task #<task_id>: <description>" --body "<summary of changes>" --base dev`.
+- Apply retry protocol.
 
-### 5. Output
-- Extract the PR number from the `gh` command output.
-- Return success with the PR number to `execute-task`.
-
-### 6. Cleanup worktrees
-- After PR is created, clean up all worktrees for this branch:
+### 5. Cleanup worktrees
+- After PR created, clean up all worktrees for this branch:
   ```
   cd /workspace/<project>
   git worktree list | grep "<branch>" | awk '{print $1}' | xargs -I {} git worktree remove {}
   ```
-- Delete the remote branch after merge (handled by `cleanup-branch` skill).
-- Do NOT delete the main `/workspace/<project>` directory — it is the shared repo.
+- Do NOT delete `/workspace/<project>`.
 
-## Tools
-- `run_command(command, cwd)` (for git, gh, and validation commands)
-- `memory_read` (for project context)
+### 6. Return
+- Return PR number to `execute-task`.
 
-## Common Pitfalls
-- **Skipping validation**: Always run validation if commands are defined.
-- **Not pulling latest changes**: Always pull before creating a new branch.
-- **Using the wrong branch**: Push to the shared branch from the task metadata, never create a new one.
-
-## Verification Checklist
-- [ ] Validation commands are executed.
-- [ ] All changes are committed.
-- [ ] Branch is pushed.
-- [ ] PR is created successfully.
-- [ ] PR number is returned to `execute-task`.
+## Verification
+- `gh pr view` returns the PR URL (PR exists and is open).
+- All worktrees for this branch are removed — `git worktree list | grep "<branch>"` returns empty.
+- No files from this task remain outside the shared repo.

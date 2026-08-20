@@ -51,12 +51,14 @@ On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash
 - Skill = `SKILL.md` with YAML frontmatter: `name` (must match the folder), `description`, `license`, optional `metadata.hermes.tags` / `related_skills`.
 - **Language convention:** all documentation and skills are written in English.
 - Adding a new profile requires touching all of: new `profiles/<name>/` (config.yaml, skills/), a service block in `docker-compose.yml` (with its `secrets:` grants + `*_FILE` envs), and the loop in `scripts/init.sh`.
-- **Skill-writing constraints** — skills are instructions for LLMs, not documentation for humans. Violations introduce the same AI anti-patterns we ban in marketing copy:
+  - **Skill-writing constraints** — skills are instructions for LLMs, not documentation for humans. Violations introduce the same AI anti-patterns we ban in marketing copy:
   - No `**Why it works**` / `**Why this is wrong**` / `**Problems:**` blocks after examples — examples are the instruction, commentary is not.
   - No parenthetical explanations inside numbered steps — move them to a separate bullet or drop them.
   - No adjective-heavy labels on examples (`"(AI-sounding)"`, `"(specific, human, varied)"`) — use bare `Bad` / `Good` or `Before` / `After`.
   - No meta-commentary about the skill's own output quality — state the constraint, show the example, move on.
   - Reference files (e.g. `prose-quality.md`) may contain short "why" explanations in table columns only when they change the action (e.g. replacement strategy). Remove columns that explain without changing behavior.
+  - No duplicated sections across skills — if a concept is defined in a reference (e.g. quality rubric in `execute-task`, rules loading in `memory.md`), reference it, do not copy it. `## Overview`, `## Common Pitfalls`, `## Important Notes`, `## Tools` sections are prohibited if they repeat information already in the steps. The steps are the skill; everything else is noise.
+  - **`## Verification` is required** on every dispatcher/hub skill (`execute-task`, `execute-qa-task`, `orchestrate-task`, `command-handler`, `create-pr`). It defines concrete, checkable completion criteria — not narrative summaries. Without it the Hermes self-improvement loop cannot measure whether the skill worked. 3–5 bullet points per skill. Reference-based skills (`references/*.md`) inherit verification from their parent hub.
 
 ## Kanban conventions (referenced throughout skills)
 

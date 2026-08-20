@@ -254,3 +254,10 @@ kanban_link --parent {{ env.HERMES_KANBAN_TASK }} --child <subtask_id>
 ### 12. Error handling
 - If any `kanban_create` or `kanban_link` call fails, capture the error and call: kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "<error message>"
 - Do not poll or loop – this skill runs once per task.
+
+## Verification
+- Parent task status is `done` (decomposed) or `blocked` (error) — not `ready`.
+- N component sub-tasks exist with `status: ready`, `component: true`, `assignee: coder`.
+- 1 PR task exists with `status: blocked`, `pr_creation: true`, dependency-blocked on all components.
+- Every component has `rules_hash` and `rules_keys_needed` in metadata.
+- Every component has `tags` with at least 3 entries for skill discovery.

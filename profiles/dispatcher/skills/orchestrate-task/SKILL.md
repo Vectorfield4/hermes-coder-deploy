@@ -97,7 +97,7 @@ Classify the task into a domain BEFORE decomposing:
 - **Page/landing** → narrative arc required, marketing blocks, scroll animations, 3D elements possible
 - **Dashboard/app** → data flow, state management, forms, tables
 - **Component** → atomic design level, reusability, storybook
-- **Content** → copywriting, SEO, accessibility
+- **Content** → copywriting, SEO, accessibility, anti-AI-pattern checks (load `prose-quality.md` reference)
 - **API/backend** → endpoints, data models, error handling
 
 For pages/landings: FIRST define the narrative arc (pain → solution → transformation → result), THEN map each act to architectural components.
@@ -163,6 +163,7 @@ Each component's acceptance criteria MUST include where applicable:
 3. **Animation** — specific motions (e.g. "Hero text fades in on scroll, 3D scene starts rotating at 30% viewport")
 4. **Narrative** — story coherence for content blocks (e.g. "Copy follows the pain→solution→result arc from artifacts/narrative.md")
 5. **Technical** — lint/test/build passes (e.g. "npm run lint passes, no TypeScript errors")
+6. **Prose quality** (for `type: content` components only) — all text passes the anti-AI-pattern checklist: zero banned words/phrases, every benefit claim has a number or constraint, headlines contain specific outcome + audience, CTA describes the actual next step. Verified against `prose-quality.md` scoring guide (score ≥ 6).
 
 #### 5e. Self-check before creating sub-tasks
 For each component, verify:

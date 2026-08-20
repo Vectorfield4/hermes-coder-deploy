@@ -71,3 +71,15 @@ code scoring ≤ 4 is retracted from memory as an anti-pattern.
 | Docs & conventions | 25% | Follow AGENTS.md, JSDoc where needed, no TODO-blockers |
 
 Before committing, verify your code against these dimensions. If any is clearly deficient — fix it before pushing.
+
+## Content Quality Overlay (when `type == content`)
+
+For content tasks (`type == content`, or components that produce `artifacts/*.md` files), load `references/prose-quality.md` and apply it AFTER the standard quality check. This is an additional layer — it does not replace the rubric above.
+
+1. **Banned word scan** — grep the output for every word in the "Banned Lexical Tells" and "Banned Phrases" lists. Replace any found before committing.
+2. **Specificity check** — every benefit claim must have a number, percentage, or named example. Abstract claims ("save time", "improve efficiency") → rewrite with concrete data.
+3. **Voice check** — read 3 sentences aloud. If they sound like a generic LinkedIn post → rewrite with tighter POV and varied rhythm.
+4. **CTA check** — if a CTA exists, it must describe the actual next step ("See a 2-min demo", "Book a call", "View pricing"). Generic CTAs ("Get Started", "Learn More") → rewrite.
+5. **Copy-paste test** — could this text appear unchanged on a competitor's site? If yes → add project-specific specifics.
+
+If any of these checks fail, fix the content before pushing. QA will re-check against `prose-quality.md` scoring guide.

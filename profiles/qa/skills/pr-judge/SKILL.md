@@ -81,6 +81,23 @@ If any dimension scores ≤ 3, prefix with a warning:
 - **Ignoring security**: a single hardcoded secret = security score ≤ 2 regardless of other quality
 - **Missing test gaps**: code that changes business logic without tests = tests score ≤ 3
 
+## Content Quality Overlay (for PRs touching `artifacts/*.md`)
+
+If the PR diff includes changes to markdown files in `artifacts/` (narrative, content-plan, etc.), run this overlay AFTER the standard rubric:
+
+1. Load the prose quality reference: read `profiles/coder/skills/execute-task/references/prose-quality.md`.
+2. For each changed markdown file, scan the diff for:
+   - **Banned words**: grep against the "Banned Lexical Tells" list. Any hit → deduct 1 point from docs score.
+   - **Banned phrases**: grep against the "Banned Phrases" list. Any hit → deduct 2 points from docs score.
+   - **Specificity**: check that benefit claims contain numbers/constraints. Abstract claims → flag.
+   - **Generic headlines**: headlines that lack a specific outcome or audience → flag.
+   - **Generic CTAs**: "Get Started", "Learn More" → flag.
+3. If ≥3 flags across the content files → the PR fails docs dimension (≤ 4) regardless of code quality.
+4. Add a content-specific note to the judge output:
+   ```
+   [JUDGE_SCORE=N] ... | content_flags=<list of issues found>
+   ```
+
 ## Verification
 - [ ] Diff was retrieved successfully
 - [ ] All 4 dimensions were evaluated

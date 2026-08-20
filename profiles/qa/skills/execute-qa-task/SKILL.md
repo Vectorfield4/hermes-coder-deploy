@@ -40,7 +40,7 @@ metadata:
      - Required metadata: `project`. If missing, block with reason.
      - Call `skill_discover("deploy-ftp")`; if found, call `skill_run(deploy-ftp, project)`.
      - The `deploy-ftp` skill downloads the latest release zip from GitHub Releases and uploads it to the server via FTP. No HITL gate — it's a mechanical operation.
-     - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] FTP deploy completed for {{ project }}. | steps=<N> | retries=<N>"`
+      - On success: `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] FTP deploy completed for {{ project }}. | steps=<N> | retries=<N>"`
      - On failure: `kanban_block --task {{ env.HERMES_KANBAN_TASK }} --reason "FTP deploy failed: <error details>"`
      - **Return here** — do not run the review flow.
    - **Otherwise (default, `type == "review"`)** → continue with the review pipeline below.
@@ -86,7 +86,7 @@ metadata:
      - If any manual criterion (e.g. "matches design", "responsive") is clearly not met → log it but do not block (these were already flagged pre-merge).
    - **If `review-and-merge` returns SUCCESS**:
      - Include judge score in the completion comment if available:
-       `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to dev and deployed to Vercel staging. | steps=<N> | retries=<N> | judge_score=N"`
+         `kanban_complete --task {{ env.HERMES_KANBAN_TASK }} --comment "[outcome=success] QA passed. Merged to dev and deployed to Vercel staging. | steps=<N> | retries=<N> | judge_score=N"`
      - **Memory decision based on judge score** (best-effort, fire-and-forget):
        - **Score ≥ 7 (verified)**: `mcp_dense_mem_remember(evidence="<what was done, key decisions, what made it high quality>", tags=["verified", "judge:<score>", "project:<project>"], confidence=high)`.
        - **Score 5–6 (neutral)**: Do not store. No memory action.

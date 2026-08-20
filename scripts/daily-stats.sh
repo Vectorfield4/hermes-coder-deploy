@@ -9,6 +9,8 @@
 #   collect-drift.sh      — #3 TSR drift detection
 #   collect-slice.sh      — #4 per-type success rate
 #   collect-passk.sh      — #8 consecutive done streak
+#   collect-task-tokens.sh       — #11 per-task token cost (branch join)
+#   collect-task-percentiles.sh  — #11 per-turn token percentiles
 
 set -euo pipefail
 
@@ -46,6 +48,7 @@ if [ -r "secrets/telegram_allowed_chats" ]; then
   fi
 fi
 DB="hermes-data/data/kanban.db"
+STATE_DB="hermes-data/state.db"
 STATS_DIR="$(dirname "$0")/stats"
 TSR_HISTORY="hermes-data/tsr_history.csv"
 
@@ -123,6 +126,14 @@ PRIO_READY=$(sqlite3 "$DB" "SELECT COUNT(*) FROM tasks WHERE status='ready';" 2>
 # ── #10 Exploration metrics ───────────────────────────────────────
 EXPLORATION_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM tasks WHERE metadata LIKE '%exploration_triggered: true%' OR metadata LIKE '%exploration_flag: true%';" 2>/dev/null || echo "0")
 HIGH_ITERATION=$(sqlite3 "$DB" "SELECT '- ' || COALESCE(title, 'untitled') FROM tasks WHERE metadata LIKE '%review_iterations%' AND CAST(SUBSTR(metadata, INSTR(metadata, 'review_iterations:') + 19) AS INTEGER) >= 3 AND status != 'done' LIMIT 5;" 2>/dev/null || echo "")
+
+# ── #11 Per-task token cost (branch join) ──────────────────────────
+TASK_TOKENS=""
+TASK_PERCENTILES=""
+if [ -f "$STATE_DB" ]; then
+  TASK_TOKENS=$("$STATS_DIR/collect-task-tokens.sh" "$DB" "$STATE_DB" 2>/dev/null || echo "")
+  TASK_PERCENTILES=$("$STATS_DIR/collect-task-percentiles.sh" "$STATE_DB" 2>/dev/null || echo "")
+fi
 
 # ── Build message ──────────────────────────────────────────────────
 MSG="📊 *Daily Stats — ${TODAY}*
@@ -230,6 +241,78 @@ if [ -n "$HIGH_ITERATION" ]; then
 
 🔄 *High-iteration tasks (≥3 rounds)*
 ${HIGH_ITERATION}"
+fi
+
+# ── #11 Per-task token cost ────────────────────────────────────────
+if [ -n "$TASK_TOKENS" ]; then
+  TOTAL_COST_ALL=0
+  TOTAL_IN_ALL=0
+  TOTAL_OUT_ALL=0
+
+  # Aggregate totals and build per-model summary
+  declare -A MODEL_IN MODEL_OUT MODEL_COST MODEL_TURNS
+  TOP_TASKS=""
+
+  while IFS='|' read -r tid ttitle tmodel ttin ttout tcost; do
+    TOTAL_COST_ALL=$(awk "BEGIN {printf \"%.4f\", $TOTAL_COST_ALL + $tcost}")
+    TOTAL_IN_ALL=$((TOTAL_IN_ALL + ttin))
+    TOTAL_OUT_ALL=$((TOTAL_OUT_ALL + ttout))
+
+    # Per-model aggregation
+    MODEL_IN[$tmodel]=$(( ${MODEL_IN[$tmodel]:-0} + ttin ))
+    MODEL_OUT[$tmodel]=$(( ${MODEL_OUT[$tmodel]:-0} + ttout ))
+    MODEL_COST[$tmodel]=$(awk "BEGIN {printf \"%.4f\", ${MODEL_COST[$tmodel]:-0} + $tcost}")
+
+    # Top tasks (first 5 unique by task_id)
+    if [ $(echo "$TOP_TASKS" | grep -c "^${tid}|" 2>/dev/null || echo "0") -eq 0 ]; then
+      TOP_TASKS="${TOP_TASKS}
+${tid}|${ttitle}|${tmodel}|${ttin}|${ttout}|${tcost}"
+    fi
+  done <<< "$TASK_TOKENS"
+
+  # Build message: top tasks
+  TOP_LIST=""
+  SHOWN=0
+  while IFS='|' read -r tid ttitle tmodel ttin ttout tcost; do
+    [ -z "$tid" ] && continue
+    [ "$SHOWN" -ge 5 ] && break
+    # Truncate title for Telegram
+    SHORT_TITLE=$(echo "$ttitle" | cut -c1-30)
+    TOP_LIST="${TOP_LIST}
+- ${SHORT_TITLE} [${tmodel}]: ~$((ttin / 1000))K in / ~$((ttout / 1000))K out (\$${tcost})"
+    SHOWN=$((SHOWN + 1))
+  done <<< "$TOP_TASKS"
+
+  # Build message: per-model breakdown
+  MODEL_LIST=""
+  for model in "${!MODEL_IN[@]}"; do
+    MODEL_LIST="${MODEL_LIST}
+- ${model}: ~$(( ${MODEL_IN[$model]} / 1000 ))K in / ~$(( ${MODEL_OUT[$model]} / 1000 ))K out (\$${MODEL_COST[$model]})"
+  done
+
+  MSG="${MSG}
+
+💸 *Per-Task Token Cost (24h)*
+Top tasks by cost:${TOP_LIST}
+
+Per-model:${MODEL_LIST}
+
+Total: ~$(( (TOTAL_IN_ALL + TOTAL_OUT_ALL) / 1000 ))K tokens | \$${TOTAL_COST_ALL}"
+fi
+
+if [ -n "$TASK_PERCENTILES" ]; then
+  PCTL_LIST=""
+  while IFS='|' read -r model turns avg_in p50 p90 p95 tin tout; do
+    [ -z "$model" ] && continue
+    PCTL_LIST="${PCTL_LIST}
+- ${model}: P50=~$((p50 / 1000))K P90=~$((p90 / 1000))K P95=~$((p95 / 1000))K (${turns} turns)"
+  done <<< "$TASK_PERCENTILES"
+
+  if [ -n "$PCTL_LIST" ]; then
+    MSG="${MSG}
+
+📈 *Turn Percentiles (per-model)*${PCTL_LIST}"
+  fi
 fi
 
 # ── Send ───────────────────────────────────────────────────────────

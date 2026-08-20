@@ -12,3 +12,8 @@ mcp_servers:
       Authorization: "Bearer ${DENSE_MEM_API_KEY}"
     tools:
       include: [remember, get_submission_status, recall_memory, trace_memory, retract_evidence, correct_relationship]
+compression:
+  enabled: true
+  threshold: 0.60
+  protect_last_n: 15
+  in_place: true

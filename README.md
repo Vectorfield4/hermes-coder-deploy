@@ -1,8 +1,45 @@
 # Hermes Coder Deploy
 
-Multi-agent development system built on Hermes Agent, orchestrating work through a Kanban board.
+You send a task to Telegram. Four AI agents pick it up, break it into pieces, build it, review it, and ship it — with a human approval gate before anything goes to production.
 
-## 🐳 Services
+This is a multi-agent development system built on [Hermes Agent](https://github.com/NousResearch/hermes-agent). A dispatcher decomposes work, a coder builds it, QA reviews and merges it, and a Telegram bot lets you steer the whole thing from your phone. Every agent has memory: rules are cached per project, and the system learns from its mistakes — storing verified patterns as templates and failed approaches as anti-patterns so they are never repeated.
+
+## 🔄 How a Task Flows
+
+Everything starts with a Telegram message. Here's what happens next:
+
+```mermaid
+graph TD
+    USER["You: /task Build a landing page"]
+    ORCH["Orchestrator<br/>decomposes into components"]
+    HERO["Hero component"]
+    FEATURES["Features Grid"]
+    CONTACT["Contact Form"]
+    PR["PR created"]
+    QA["QA review<br/>CI check + code review"]
+    PASS["PASS<br/>merge + staging deploy"]
+    FAIL["FAIL<br/>coder fixes + re-review"]
+    LOOP{{"≥3 iterations?"}}
+    EXPLOR["EXPLORATION<br/>orchestrator re-decomposes<br/>with a different strategy"]
+
+    USER --> ORCH
+    ORCH --> HERO & FEATURES & CONTACT
+    HERO & FEATURES & CONTACT --> PR
+    PR --> QA
+    QA -->|"pass"| PASS
+    QA -->|"fail"| FAIL
+    FAIL --> LOOP
+    LOOP -->|"yes"| EXPLOR
+    LOOP -->|"no"| FAIL
+```
+
+**Release and deploy** follow their own paths:
+- `/release` → QA opens a PR from `dev` to `main` → blocked until you approve → merge → build → GitHub Release
+- `/deploy-ftp` → QA downloads the release zip → FTP to your server
+
+## 🐳 Architecture
+
+Four containers, one shared volume, one memory stack. The volume (`hermes-data`) holds the Kanban database and agent memory — it is the only way the containers communicate.
 
 ### Workers
 
@@ -21,15 +58,15 @@ Multi-agent development system built on Hermes Agent, orchestrating work through
 | **embedding** | TEI `all-MiniLM-L6-v2` (port 8081) | Embeddings for RAG |
 | **dense-mem** | MCP memory server (`:8080/mcp`, control portal `:8090`) | RAG E-pool |
 
-All services share the `hermes-data` volume (Kanban + agent memory) — it is the only coordination channel. Workers start only after `dense-mem` is healthy.
+Workers start only after `dense-mem` is healthy. The Telegram bot runs a background process that polls blocked tasks every 30 seconds and sends you a reminder when human approval is needed.
 
 ## 🧠 Skills
 
-Each skill is a Markdown instruction for the agent. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
+Each skill is a Markdown instruction file — the agent loads it on demand and follows the procedure inside. Skills live in `profiles/<profile>/skills/<skill-name>/SKILL.md`.
 
 ### dispatcher
-- **command-handler** — Telegram gateway: `/task`, `/ask`, `/feedback`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help`. Stamps initial `priority_score` on task creation. Detects `refactoring` type from keywords.
-- **orchestrate-task** — decomposes tasks into component sub-tasks (UI / content / integration) with `acceptance_criteria`, coordinates a shared branch and final PR task. Recalls anti-patterns before decomposing; handles exploration re-decomposition.
+- **command-handler** — Telegram gateway: `/task`, `/ask`, `/feedback`, `/project add`, `/status`, `/cancel`, `/release`, `/deploy-ftp`, `/unblock`, `/help`. Stamps initial priority score on task creation. Detects refactoring tasks from keywords.
+- **orchestrate-task** — decomposes tasks into component sub-tasks (UI / content / integration) with acceptance criteria, coordinates a shared branch and final PR task. Recalls anti-patterns before decomposing; handles exploration re-decomposition.
 - **prioritize-tasks** — composite scoring (type + aging + iterations + unblocking). Advisory metadata for operators.
 
 ### coder
@@ -44,47 +81,26 @@ Each skill is a Markdown instruction for the agent. Skills live in `profiles/<pr
 - **review-and-merge** — CI check (10 min wait), code review, squash merge to `dev`, Vercel staging deploy.
 - **release-to-main** — PR dev→main, blocked for human approval, merge after `/unblock`, build, GitHub Release.
 - **deploy-vercel** / **deploy-ftp** — staging and production deploys.
-- **pr-judge** — scores PRs 1–10, feeds verified templates and anti-patterns to the E-pool.
+- **pr-judge** — scores PRs 1–10, feeds verified templates and anti-patterns to the memory layer.
 - **resolve-merge-conflict** — automatic resolution via `git merge --strategy-option theirs`.
 
-## 🔄 Task Flow
+## 🧠 Memory Layer
 
-```
-/task → orchestrator → decompose into components → coder (parallel) → PR → QA review
-       │                                                                    ↓
-       │                                                          ┌─── PASS → merge to dev → Vercel staging
-       │                                                          │
-       │                                                          └─── FAIL → coder fix → QA re-review
-       │                                                                                       ↓
-       │                                                                              ≥3 iterations → EXPLORATION
-       │                                                                                               ↓
-       │                                                                                         orchestrator re-decompose
-       │
-       └─ (type: refactoring) → targeted decomposition → coder (targeted edits) → PR → QA review
+The system has two kinds of memory. Think of it as a filing cabinet with two drawers: one for rules that never change, and one for lessons learned.
 
-/ask → RAG recall → answer (no task created)
-/feedback → LLM analyzes → create refactoring task / store in memory / both
-```
+### Layer 1: Project Rules (the filing cabinet)
 
-**Release:** `/release` → QA creates PR dev→main → blocked (HITL) → `/unblock` → merge → build → GitHub Release.
-**Deploy:** `/deploy-ftp` → QA downloads release zip → FTP to server.
+The orchestrator reads your project's `AGENTS.md` and `SOUL.md` on first run, extracts the key conventions (coding style, testing patterns, API standards), and caches them in the memory database keyed by git commit hash. On the next task, it checks whether the hash has changed — if not, it uses the cache. Coder and QA agents recall these rules before every task. Disk files are always the fallback.
 
-## 🧠 Memory Layer (RAG E-pool)
+### Layer 2: Experience (the lessons notebook)
 
-Two-layer memory via **dense-mem** MCP server (PostgreSQL + pgvector + TEI embeddings).
+- **Recall** before executing: the agent searches for similar past solutions, patterns, and pitfalls.
+- **Remember** after success: compressed summaries of what worked (never raw source code).
+- **Anti-patterns**: known failures are stored and recalled before execution — so the same mistake is never repeated.
+- **Exploration**: after 3 failed review iterations, the system stores what went wrong and escalates to the orchestrator for a different decomposition strategy.
+- **Self-correction**: when an agent's own recalled evidence turns out to be wrong, it retracts it. Each agent can only modify its own records — ownership is enforced.
 
-### Layer 1: Project Rules (authoritative)
-- Orchestrator extracts `AGENTS.md` / `SOUL.md` into tagged `project-rules:<project>` records, keyed by `rules_hash` (git commit hash).
-- Coder/QA recall via `references/memory.md`. Disk files are the deterministic fallback.
-
-### Layer 2: Experience (advisory)
-- **Recall** before executing: similar past solutions, patterns, pitfalls.
-- **Remember** after success: compressed summaries (never raw source).
-- **Anti-patterns**: recalled before execution — known failures are not repeated.
-- **Exploration anti-patterns** (`tags: ["anti-pattern", "exploration"]`): stored by QA/coder when iteration ≥ 3. Orchestrator recalls these as **authoritative avoidance constraints** before re-decomposition.
-- **Correct on failure**: coder retracts its own wrong evidence; QA retracts its own. Ownership enforced by dense-mem.
-
-**All memory calls are best-effort — never block a task.**
+**All memory calls are best-effort — a memory failure never blocks a task.**
 
 ### Stack
 
@@ -163,26 +179,21 @@ Sends to Telegram: task counts, completed/blocked lists, memory stats, trajector
 0 9 * * * cd /root/hermes-coder-deploy && TELEGRAM_CHAT_ID=<id> make daily-stats
 ```
 
-## ✅ Best Practices
+## ✅ Design Principles
 
-| Pattern | Implementation |
-|---------|----------------|
-| **Prompt Chaining** | Skills are fixed linear pipelines with no branching ambiguity. |
-| **Routing** | QA dispatches by `metadata.type`; orchestrator classifies by component type. |
-| **Parallelization** | Component sub-tasks run in parallel on separate git worktrees per shared branch. |
-| **Reflection** | Three-tier check: coder self-review (4-dimension rubric), QA review cycle, pr-judge scoring (≥7 → template, ≤4 → anti-pattern). |
-| **Tool Use** | Kanban, shell, MCP memory, skill composition, file I/O, delegation — 15+ tool categories. |
-| **Planning** | Orchestrator decomposes with `acceptance_criteria` (2–5 testable conditions) and `rules_keys_needed` per component. |
-| **Multi-Agent** | 4 containers, 3 roles (orchestrator / coder / qa) with role-based MCP tool whitelisting. |
-| **Memory** | Two-layer E-pool: rules cache (authoritative, keyed by git hash) and experience (advisory, per-profile ownership). |
-| **Learning** | pr-judge scores PRs 1–10; high scores saved as templates, low scores retracted as anti-patterns. |
-| **MCP** | dense-mem MCP server with per-profile tool access control in `config.yaml`. |
-| **Goal Monitoring** | Orchestrator sets acceptance criteria; QA verifies each against the codebase. |
-| **Exception Handling** | Retry protocol (3 attempts, exponential backoff), transient/permanent classification, heartbeat, idempotent resume. |
-| **Human-in-the-Loop** | Release gate (`/release` → blocked → `/unblock`), Telegram notifications, full command set. |
-| **RAG** | Recall before execution; rules cache with git-hash invalidation; anti-pattern recall prevents repeating failures. |
-| **Resource-Aware** | `deepseek-reasoner` for planning/review, `deepseek-chat` for implementation. |
-| **Guardrails** | Input validation (dangerous tokens blocked), MCP tool whitelisting, ownership-based memory edit control. |
-| **Evaluation** | Structured outcome tags, daily stats (TSR, drift, cost, pass@k, per-type success). |
-| **Prioritization** | Composite scoring: `type_weight + aging + iteration_boost + unblock_bonus`. Anti-starvation aging capped at 5. |
-| **Exploration** | After ≥3 review iterations: anti-patterns stored, task escalates to orchestrator for re-decomposition. |
+These are the patterns that make the system work. Each one exists because a specific problem demanded it.
+
+| Principle | Why it exists |
+|-----------|---------------|
+| **Decompose before build** | Orchestrator breaks tasks into 2–8 components with acceptance criteria before the coder writes a line. Smaller pieces mean faster reviews and fewer merge conflicts. |
+| **Parallel on shared branches** | Component sub-tasks run on separate worktrees of the same branch. Parallel speed, single-branch coherence. |
+| **Three-tier quality gate** | Coder self-checks (4-dimension rubric) → QA reviews → pr-judge scores. High scores become templates; low scores become anti-patterns. The system gets sharper with every PR. |
+| **Memory is best-effort** | Rules cache and experience recall enhance context but never block execution. A memory failure degrades gracefully — the agent still works, just with less context. |
+| **Ownership-based memory** | Each agent can only modify its own records. The coder cannot overwrite QA's evidence. Dense-mem enforces this at the database level. |
+| **Human-in-the-loop** | Production deploys and main-branch merges require explicit `/unblock`. No silent deploys, no surprise releases. |
+| **Exploration on repeated failure** | After 3 failed review iterations, the system stops the fix loop and escalates to the orchestrator for a fundamentally different approach. |
+| **Role-based tool access** | Each profile whitelists which MCP tools it can call. The coder cannot trigger deploys; the QA cannot rewrite project rules. |
+| **Telegram-first control** | Every operation — task creation, release, deploy, approval — is accessible from Telegram. The phone is the control panel. |
+| **Retry with classification** | Failed operations are classified as transient (retry 3x with backoff) or permanent (fail immediately). No wasted retries on guaranteed failures. |
+| **Priority scoring** | Tasks carry a composite score (type weight + age + iteration penalty + dependency bonus). The most urgent work surfaces first; old tasks age out of starvation. |
+| **Progressive skill loading** | The agent sees a compact skill catalog at session start and only loads full instructions when a task matches. Keeps context lean for routine operations. |

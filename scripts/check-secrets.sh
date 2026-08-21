@@ -31,8 +31,11 @@ done
 
 EMPTY=()
 for name in $REQUIRED; do
-  if [ -f "secrets/$name" ] && [ ! -s "secrets/$name" ]; then
-    EMPTY+=("$name")
+  if [ -f "secrets/$name" ]; then
+    # Empty file OR still containing its <placeholder> counts as unfilled.
+    if [ ! -s "secrets/$name" ] || grep -qE '^<.*>$' "secrets/$name"; then
+      EMPTY+=("$name")
+    fi
   fi
 done
 
@@ -44,7 +47,7 @@ if [ "${#MISSING[@]}" -gt 0 ]; then
 fi
 if [ "${#EMPTY[@]}" -gt 0 ]; then
   FAILED=1
-  echo "❌ Required secret files are empty (fill with printf '%s' '<value>' > secrets/<name>):"
+    echo "❌ Required secret files are empty or still contain their <placeholder>:"
   printf '   - secrets/%s\n' "${EMPTY[@]}"
 fi
 

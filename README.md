@@ -150,7 +150,7 @@ One plain file per value in `secrets/` (gitignored). `make init` creates empty p
 - Compose mounts each into `/run/secrets/<name>` (K8s-style file mount, **not encrypted**).
 - `load-secrets.sh` implements Docker `*_FILE` convention. Fails fast on missing files.
 - `check-secrets.sh` (run by `make up` / `make setup`) validates required secrets are non-empty.
-- Required: `token`, `telegram_allowed_chats`, `github_token`, `openai_api_key`, `postgres_password`, `control_portal_token`, `ai_verifier_api_key`. Optional: `ftp_*`, `vercel_token`, `vercel_org_id` / `vercel_project_id`.
+- Required: `token`, `telegram_allowed_chats`, `github_token`, `openai_api_key_{dispatcher,coder,qa,telegram}`, `openai_api_base_{dispatcher,coder,qa,telegram}`, `postgres_password`, `control_portal_token`, `ai_verifier_{api_key,api_url,model}`. Optional: `ftp_*`, `vercel_token`, `vercel_org_id` / `vercel_project_id`.
 - `dense_mem_{dispatcher,coder,qa}` are **generated automatically** by `make setup` — do not fill manually.
 
 ## 🚀 Deployment
@@ -163,10 +163,19 @@ make init                              # create secrets/ placeholders
 printf '%s' '<token>'                  > secrets/token
 printf '%s' '<chat_id>'                > secrets/telegram_allowed_chats
 printf '%s' '<github_pat>'             > secrets/github_token
-printf '%s' '<deepseek_api_key>'       > secrets/openai_api_key
+printf '%s' '<llm_api_key>'            > secrets/openai_api_key_dispatcher
+printf '%s' '<llm_api_key>'            > secrets/openai_api_key_coder
+printf '%s' '<llm_api_key>'            > secrets/openai_api_key_qa
+printf '%s' '<llm_api_key>'            > secrets/openai_api_key_telegram
+printf '%s' '<llm_base_url>'           > secrets/openai_api_base_dispatcher
+printf '%s' '<llm_base_url>'           > secrets/openai_api_base_coder
+printf '%s' '<llm_base_url>'           > secrets/openai_api_base_qa
+printf '%s' '<llm_base_url>'           > secrets/openai_api_base_telegram
+printf '%s' '<llm_base_url>'           > secrets/ai_verifier_api_url
+printf '%s' '<model_id>'               > secrets/ai_verifier_model
 printf '%s' '<pg_password>'            > secrets/postgres_password
 printf '%s' '<portal_token>'           > secrets/control_portal_token
-printf '%s' '<deepseek_api_key>'       > secrets/ai_verifier_api_key
+printf '%s' '<llm_api_key>'            > secrets/ai_verifier_api_key
 make setup                             # start stack + generate memory keys
 make logs                              # verify all 7 services are up
 ```

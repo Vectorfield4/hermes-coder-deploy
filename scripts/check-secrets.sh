@@ -10,9 +10,11 @@
 set -u
 
 # Required secrets (see secrets/README.md). Add new required secrets here.
-REQUIRED="token telegram_allowed_chats github_token vercel_token openai_api_key \
+REQUIRED="token telegram_allowed_chats github_token vercel_token \
+openai_api_key_dispatcher openai_api_key_coder openai_api_key_qa openai_api_key_telegram \
+openai_api_base_dispatcher openai_api_base_coder openai_api_base_qa openai_api_base_telegram \
 dense_mem_dispatcher dense_mem_coder dense_mem_qa \
-postgres_password control_portal_token ai_verifier_api_key"
+postgres_password control_portal_token ai_verifier_api_key ai_verifier_api_url ai_verifier_model"
 
 if [ ! -f "docker-compose.yml" ]; then
   echo "❌ docker-compose.yml not found. Run this from the repo root."

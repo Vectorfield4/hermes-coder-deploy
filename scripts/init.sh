@@ -15,13 +15,22 @@ for name in \
   ftp_host \
   ftp_user \
   ftp_pass \
-  openai_api_key \
+  openai_api_key_dispatcher \
+  openai_api_key_coder \
+  openai_api_key_qa \
+  openai_api_key_telegram \
+  openai_api_base_dispatcher \
+  openai_api_base_coder \
+  openai_api_base_qa \
+  openai_api_base_telegram \
   dense_mem_dispatcher \
   dense_mem_coder \
   dense_mem_qa \
   postgres_password \
   control_portal_token \
-  ai_verifier_api_key; do
+  ai_verifier_api_key \
+  ai_verifier_api_url \
+  ai_verifier_model; do
   if [ ! -f "secrets/$name" ]; then
     : > "secrets/$name"
   fi
@@ -46,13 +55,22 @@ Map (see docker-compose.yml `secrets:`):
 | vercel_org_id             | optional | coder, qa          | Vercel org id (legacy link shortcut)    |
 | vercel_project_id         | optional | coder, qa          | Vercel project id (legacy link shortcut)|
 | ftp_host / ftp_user / ftp_pass | yes (prod FTP) | qa        | FTP credentials for `/deploy`          |
-| openai_api_key            | yes      | all workers        | DeepSeek API key                        |
+| openai_api_key_dispatcher | yes      | dispatcher         | LLM API key (OpenAI-compatible)        |
+| openai_api_key_coder      | yes      | coder              | LLM API key (OpenAI-compatible)        |
+| openai_api_key_qa         | yes      | qa                 | LLM API key (OpenAI-compatible)        |
+| openai_api_key_telegram   | yes      | telegram-bot       | LLM API key (OpenAI-compatible)        |
+| openai_api_base_dispatcher| yes      | dispatcher         | LLM base URL (OpenAI-compatible)       |
+| openai_api_base_coder     | yes      | coder              | LLM base URL                            |
+| openai_api_base_qa        | yes      | qa                 | LLM base URL                            |
+| openai_api_base_telegram  | yes      | telegram-bot       | LLM base URL                            |
 | dense_mem_dispatcher      | yes      | dispatcher, telegram-bot | dense-mem profile key, created by `bash scripts/memory-bootstrap.sh` |
 | dense_mem_coder           | yes      | coder              | same                                   |
 | dense_mem_qa              | yes      | qa                 | same                                   |
 | postgres_password         | yes      | memory-db, dense-mem | PostgreSQL password                 |
 | control_portal_token      | yes      | dense-mem, memory-bootstrap.sh | dense-mem control portal token |
-| ai_verifier_api_key       | yes      | dense-mem          | DeepSeek API key (fact verification)    |
+| ai_verifier_api_key       | yes      | dense-mem          | LLM API key (fact verification)        |
+| ai_verifier_api_url       | yes      | dense-mem          | LLM base URL (fact verification)       |
+| ai_verifier_model         | yes      | dense-mem          | LLM model id (fact verification)       |
 
 Fill each file with `printf '%s' '<value>' > secrets/<name>`. Compose mounts
 them into `/run/secrets/<name>`; `scripts/load-secrets.sh` (inside the

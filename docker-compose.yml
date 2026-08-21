@@ -9,12 +9,13 @@ services:
       - ./scripts/load-secrets.sh:/usr/local/bin/load-secrets.sh:ro
       - ./scripts/ensure-profile.sh:/usr/local/bin/ensure-profile.sh:ro
     secrets:
-      - openai_api_key
+      - openai_api_key_dispatcher
+      - openai_api_base_dispatcher
       - dense_mem_dispatcher
     environment:
       HERMES_PROFILE: dispatcher
-      OPENAI_API_BASE: https://api.deepseek.com/v1
-      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_dispatcher
+      OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_dispatcher
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_dispatcher
     depends_on:
       dense-mem:
@@ -50,16 +51,17 @@ services:
       - vercel_token
       - vercel_org_id
       - vercel_project_id
-      - openai_api_key
+      - openai_api_key_coder
+      - openai_api_base_coder
       - dense_mem_coder
     environment:
       HERMES_PROFILE: coder
-      OPENAI_API_BASE: https://api.deepseek.com/v1
       GITHUB_TOKEN_FILE: /run/secrets/github_token
       VERCEL_TOKEN_FILE: /run/secrets/vercel_token
       VERCEL_ORG_ID_FILE: /run/secrets/vercel_org_id
       VERCEL_PROJECT_ID_FILE: /run/secrets/vercel_project_id
-      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_coder
+      OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_coder
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_coder
     depends_on:
       dense-mem:
@@ -98,11 +100,11 @@ services:
       - vercel_token
       - vercel_org_id
       - vercel_project_id
-      - openai_api_key
+      - openai_api_key_qa
+      - openai_api_base_qa
       - dense_mem_qa
     environment:
       HERMES_PROFILE: qa
-      OPENAI_API_BASE: https://api.deepseek.com/v1
       GITHUB_TOKEN_FILE: /run/secrets/github_token
       FTP_HOST_FILE: /run/secrets/ftp_host
       FTP_USER_FILE: /run/secrets/ftp_user
@@ -110,7 +112,8 @@ services:
       VERCEL_TOKEN_FILE: /run/secrets/vercel_token
       VERCEL_ORG_ID_FILE: /run/secrets/vercel_org_id
       VERCEL_PROJECT_ID_FILE: /run/secrets/vercel_project_id
-      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_qa
+      OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_qa
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_qa
     depends_on:
       dense-mem:
@@ -144,14 +147,15 @@ services:
     secrets:
       - token
       - telegram_allowed_chats
-      - openai_api_key
+      - openai_api_key_telegram
+      - openai_api_base_telegram
       - dense_mem_dispatcher
     environment:
       HERMES_PROFILE: dispatcher
-      OPENAI_API_BASE: https://api.deepseek.com/v1
       TELEGRAM_BOT_TOKEN_FILE: /run/secrets/token
       TELEGRAM_ALLOWED_CHATS_FILE: /run/secrets/telegram_allowed_chats
-      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_telegram
+      OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_telegram
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_dispatcher
     depends_on:
       dense-mem:
@@ -235,6 +239,8 @@ services:
       - postgres_password
       - control_portal_token
       - ai_verifier_api_key
+      - ai_verifier_api_url
+      - ai_verifier_model
     environment:
       LOG_LEVEL: info
       CONTROL_HTTP_ADDR: ":8090"
@@ -251,9 +257,9 @@ services:
       AI_API_KEY: tei
       AI_API_EMBEDDING_MODEL: all-MiniLM-L6-v2
       AI_API_EMBEDDING_DIMENSIONS: "384"
-      AI_VERIFIER_API_URL: https://api.deepseek.com/v1
+      AI_VERIFIER_API_URL_FILE: /run/secrets/ai_verifier_api_url
       AI_VERIFIER_API_KEY_FILE: /run/secrets/ai_verifier_api_key
-      AI_VERIFIER_MODEL: deepseek-chat
+      AI_VERIFIER_MODEL_FILE: /run/secrets/ai_verifier_model
       AI_VERIFIER_MAX_INPUT_TOKENS: "64000"
       AI_VERIFIER_MAX_OUTPUT_TOKENS: "8192"
     ports:
@@ -281,13 +287,22 @@ secrets:
   ftp_host: { file: ./secrets/ftp_host }
   ftp_user: { file: ./secrets/ftp_user }
   ftp_pass: { file: ./secrets/ftp_pass }
-  openai_api_key: { file: ./secrets/openai_api_key }
+  openai_api_key_dispatcher: { file: ./secrets/openai_api_key_dispatcher }
+  openai_api_key_coder: { file: ./secrets/openai_api_key_coder }
+  openai_api_key_qa: { file: ./secrets/openai_api_key_qa }
+  openai_api_key_telegram: { file: ./secrets/openai_api_key_telegram }
+  openai_api_base_dispatcher: { file: ./secrets/openai_api_base_dispatcher }
+  openai_api_base_coder: { file: ./secrets/openai_api_base_coder }
+  openai_api_base_qa: { file: ./secrets/openai_api_base_qa }
+  openai_api_base_telegram: { file: ./secrets/openai_api_base_telegram }
   dense_mem_dispatcher: { file: ./secrets/dense_mem_dispatcher }
   dense_mem_coder: { file: ./secrets/dense_mem_coder }
   dense_mem_qa: { file: ./secrets/dense_mem_qa }
   postgres_password: { file: ./secrets/postgres_password }
   control_portal_token: { file: ./secrets/control_portal_token }
   ai_verifier_api_key: { file: ./secrets/ai_verifier_api_key }
+  ai_verifier_api_url: { file: ./secrets/ai_verifier_api_url }
+  ai_verifier_model: { file: ./secrets/ai_verifier_model }
 
 volumes:
   memory-db-data:

@@ -79,6 +79,10 @@ extract_key() {
 for profile in dispatcher coder qa; do
   FILE="secrets/dense_mem_${profile}"
 
+  # Compose materializes a missing file-backed secret as an empty directory;
+  # drop it so the redirects below succeed.
+  [ -d "$FILE" ] && rmdir "$FILE"
+
   # Try creating the profile
   RESPONSE=$(curl -s -w "\n%{http_code}" -X POST -H "$AUTH" -H "Content-Type: application/json" \
     -d "{\"name\":\"$profile\"}" "$BASE/teams/$TEAM_ID/profiles" 2>/dev/null)
@@ -117,6 +121,23 @@ for profile in dispatcher coder qa; do
     echo "   Response: $BODY"
   fi
 done
+
+# --- Verify ---
+FAILED=0
+for profile in dispatcher coder qa; do
+  FILE="secrets/dense_mem_${profile}"
+  if [ -s "$FILE" ] && ! grep -qE '^<.*>$' "$FILE"; then
+    chmod 600 "$FILE"
+    echo "✅ secrets/dense_mem_${profile}"
+  else
+    echo "❌ secrets/dense_mem_${profile} is empty or still a placeholder."
+    FAILED=1
+  fi
+done
+if [ "$FAILED" -ne 0 ]; then
+  echo "   Fix the errors above and re-run 'make setup' (idempotent)."
+  exit 1
+fi
 
 echo ""
 echo "===================================================================="

@@ -13,9 +13,9 @@ restart:
 	docker compose up -d --force-recreate dispatcher coder qa telegram-bot
 
 setup:
-	bash scripts/check-secrets.sh
 	docker compose up -d memory-db embedding dense-mem
 	bash scripts/memory-bootstrap.sh
+	bash scripts/check-secrets.sh
 	docker compose up -d --force-recreate dispatcher coder qa telegram-bot
 
 down:

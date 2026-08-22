@@ -31,7 +31,7 @@ Deployment + instruction repo for a 4-container Hermes system (`nousresearch/her
 All targets use bash + `docker compose` (v2):
 
 - `make init` — creates `workspace/`, `backups/`, `secrets/` (empty placeholder files, never overwrites existing) and a generated `secrets/README.md`. Note: compose mounts `./hermes-data` (Kanban DB + agent memory), which **is** in `.gitignore`.
-- `make check-secrets` — preflight: every secret file declared in compose exists and required ones are non-empty (optional: `ftp_*`, `vercel_org_id`, `vercel_project_id`)
+- `make check-secrets` — preflight: every secret file declared in compose exists and required ones are non-empty (optional: `ftp_*`, `vercel_org_id`)
 - `make up` / `make down` / `make logs` — lifecycle (`make up` runs `check-secrets` first; workers start only after `dense-mem` is healthy; containers fail fast on unreadable secret files)
 - `make backup` — Kanban dump + dense-mem PostgreSQL `pg_dump` into `backups/`, keeps 7 days (also cron'd on server at 02:00 via `cloud-init.sh`)
 - `make memory-bootstrap` — creates the dense-mem team + per-worker profiles and prints the keys to store as `secrets/dense_mem_<profile>`
@@ -42,7 +42,7 @@ All targets use bash + `docker compose` (v2):
 - Values live in `secrets/` (gitignored): one plain file per secret, no comments inside (the whole file content IS the value; trailing newline stripped by the loader). `make init` creates empty placeholders; fill them with `printf '%s' '<value>' > secrets/<name>`. Compose mounts each into `/run/secrets/<name>` (per-service grants in the service's `secrets:` list; `secrets:` is a bind-mounted file, **no encryption** — it's a K8s Secret-like abstraction, not a vault).
 - Containers run `scripts/load-secrets.sh` before the real command: it implements the Docker `*_FILE` convention — for every `VAR_FILE` env var it `export VAR="$(cat $VAR_FILE)"`. Compose sets `VAR_FILE=/run/secrets/<name>`; Hermes/dense-mem read plain `VAR`. The loader is strict (unreadable/missing file aborts the container).
 - `dense-mem` uses an entrypoint wrapper (`entrypoint: [.. load-secrets.sh && exec /app/docker-entrypoint.sh ..]`) because its own image entrypoint builds `POSTGRES_DSN` from env at startup; `memory-db` uses the image-native `POSTGRES_PASSWORD_FILE`. Non-secret config (`POSTGRES_USER/DB`, `AI_API_KEY=tei` dummy for the local TEI) is hardcoded in compose `environment:`. Every consumer's LLM endpoint is per-consumer and goes through the same secrets mechanism: `openai_api_base_<consumer>` (→ `OPENAI_API_BASE` via the `*_FILE` loader), plus `ai_verifier_api_url` / `ai_verifier_model` for dense-mem's verifier; worker models live in `profiles/<name>/config.yaml`.
-- `scripts/check-secrets.sh` (run by `make up` / `make check-secrets`) fails before start if a required secret file is empty; optional files (`ftp_*`, `vercel_org_id`, `vercel_project_id`) may stay empty. A new secret = add a file in `secrets/` + an entry in compose `secrets:` + a `*_FILE` grant on the services that need it.
+- `scripts/check-secrets.sh` (run by `make up` / `make check-secrets`) fails before start if a required secret file is empty; optional files (`ftp_*`, `vercel_org_id`) may stay empty. A new secret = add a file in `secrets/` + an entry in compose `secrets:` + a `*_FILE` grant on the services that need it.
 
 On Windows: Makefile and `scripts/*.sh` are bash — run them under WSL/git-bash, or run the underlying docker commands manually. There is no test/lint step; sanity-check with `docker compose config`.
 

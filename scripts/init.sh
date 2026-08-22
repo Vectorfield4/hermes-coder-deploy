@@ -11,7 +11,6 @@ for name in \
   github_token \
   vercel_token \
   vercel_org_id \
-  vercel_project_id \
   ftp_host \
   ftp_user \
   ftp_pass \
@@ -52,8 +51,7 @@ Map (see docker-compose.yml `secrets:`):
 | telegram_allowed_chats     | yes      | telegram-bot, daily-stats | Comma-separated allowed chat IDs |
 | github_token              | yes      | coder, qa          | GitHub PAT                              |
 | vercel_token              | yes      | coder, qa          | Vercel API token                        |
-| vercel_org_id             | optional | coder, qa          | Vercel org id (legacy link shortcut)    |
-| vercel_project_id         | optional | coder, qa          | Vercel project id (legacy link shortcut)|
+| vercel_org_id             | optional | coder, qa          | Vercel org id (team scope pin for `vercel link`) |
 | ftp_host / ftp_user / ftp_pass | yes (prod FTP) | qa        | FTP credentials for `/deploy`          |
 | openai_api_key_dispatcher | yes      | dispatcher         | LLM API key (OpenAI-compatible)        |
 | openai_api_key_coder      | yes      | coder              | LLM API key (OpenAI-compatible)        |

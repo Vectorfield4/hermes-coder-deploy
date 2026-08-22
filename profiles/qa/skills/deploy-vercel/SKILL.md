@@ -37,12 +37,11 @@ Builds the project at `dev` and uploads it to Vercel as a staging/preview deploy
 
 ### 2. Resolve the Vercel link for this project
 - Read `/workspace/<project>/.vercel/project.json` → extract `orgId` and `projectId`.
-- Fallback (backward compatibility): if the file is missing, use `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` from the QA container environment (injected from `secrets/vercel_org_id` / `secrets/vercel_project_id`).
-- If neither exists → return an error: "Vercel is not linked for project <project>". Do not guess.
+- If the file is missing → return an error: "Vercel is not linked for project <project>". Do not guess — run `vercel link` in the project first.
 
 ### 3. Pull Vercel project settings
 - `npx --yes vercel@latest pull --yes --environment=preview --token "$VERCEL_TOKEN"`.
-- The committed `.vercel/project.json` (or the env fallback) selects the correct project non-interactively.
+- The committed `.vercel/project.json` selects the correct project non-interactively.
 
 ### 4. Build locally
 - `npx --yes vercel@latest build --token "$VERCEL_TOKEN"`.
@@ -60,12 +59,12 @@ Builds the project at `dev` and uploads it to Vercel as a staging/preview deploy
 ## Common Pitfalls
 - **Not being on `dev`**: always checkout and pull `dev` first so the merge is included.
 - **Non-interactive mode**: always pass `--token` and `--yes`; the CLI must never prompt.
-- **Project not linked**: if `.vercel/project.json` is missing and there is no env fallback, return an error instead of guessing — run `vercel link` in the project first.
+- **Project not linked**: if `.vercel/project.json` is missing, return an error instead of guessing — run `vercel link` in the project first.
 - **Committing secrets**: `.vercel/project.json` only contains `orgId`/`projectId` (not secrets) and is safe to commit; `.vercel/.env*.local` and `.vercel/.env*.prod.local` files must never be committed.
 
 ## Verification Checklist
 - [ ] `dev` is up to date.
-- [ ] Vercel link resolved for `<project>` (`.vercel/project.json` or env fallback).
+- [ ] Vercel link resolved for `<project>` (`.vercel/project.json`).
 - [ ] Project settings pulled successfully.
 - [ ] Local build succeeds.
 - [ ] Deployment URL returned and reachable.

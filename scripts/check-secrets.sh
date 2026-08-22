@@ -3,7 +3,7 @@
 #
 # Verifies before `docker compose up` that every secret file declared in
 # docker-compose.yml exists, and that every *required* secret is non-empty
-# (optional ones may stay empty: ftp_*, vercel_org_id, vercel_project_id).
+# (optional ones may stay empty: ftp_*, vercel_org_id).
 # This makes a fresh clone fail fast instead of silently starting containers
 # with empty credentials.
 

@@ -50,7 +50,6 @@ services:
       - github_token
       - vercel_token
       - vercel_org_id
-      - vercel_project_id
       - openai_api_key_coder
       - openai_api_base_coder
       - dense_mem_coder
@@ -59,7 +58,6 @@ services:
       GITHUB_TOKEN_FILE: /run/secrets/github_token
       VERCEL_TOKEN_FILE: /run/secrets/vercel_token
       VERCEL_ORG_ID_FILE: /run/secrets/vercel_org_id
-      VERCEL_PROJECT_ID_FILE: /run/secrets/vercel_project_id
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_coder
       OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_coder
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_coder
@@ -99,7 +97,6 @@ services:
       - ftp_pass
       - vercel_token
       - vercel_org_id
-      - vercel_project_id
       - openai_api_key_qa
       - openai_api_base_qa
       - dense_mem_qa
@@ -111,7 +108,6 @@ services:
       FTP_PASS_FILE: /run/secrets/ftp_pass
       VERCEL_TOKEN_FILE: /run/secrets/vercel_token
       VERCEL_ORG_ID_FILE: /run/secrets/vercel_org_id
-      VERCEL_PROJECT_ID_FILE: /run/secrets/vercel_project_id
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key_qa
       OPENAI_API_BASE_FILE: /run/secrets/openai_api_base_qa
       DENSE_MEM_API_KEY_FILE: /run/secrets/dense_mem_qa
@@ -283,7 +279,6 @@ secrets:
   github_token: { file: ./secrets/github_token }
   vercel_token: { file: ./secrets/vercel_token }
   vercel_org_id: { file: ./secrets/vercel_org_id }
-  vercel_project_id: { file: ./secrets/vercel_project_id }
   ftp_host: { file: ./secrets/ftp_host }
   ftp_user: { file: ./secrets/ftp_user }
   ftp_pass: { file: ./secrets/ftp_pass }

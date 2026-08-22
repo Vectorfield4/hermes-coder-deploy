@@ -49,8 +49,10 @@ Create files:
 
 ### 6. Link to Vercel (staging deploys)
 - Requires `VERCEL_TOKEN` in env. If missing → skip with warning, continue.
-- If `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` are set → create `.vercel/project.json` with those values.
-- Otherwise → `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"`. If it needs interactive input → report back that user must create the Vercel project manually.
+- If `.vercel/project.json` already exists with `orgId` + `projectId` → skip linking.
+- Link non-interactively: `npx --yes vercel@latest link --yes --token "$VERCEL_TOKEN"`.
+- If `VERCEL_ORG_ID` is set → pin the team by appending `--scope "$VERCEL_ORG_ID"`.
+- If linking needs interactive input → report back that user must create the Vercel project manually.
 - Verify `.vercel/project.json` exists with `orgId` and `projectId`. Safe to commit. Never commit `.vercel/.env*`.
 
 ### 7. Commit and push

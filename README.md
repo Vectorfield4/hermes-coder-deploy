@@ -150,7 +150,7 @@ One plain file per value in `secrets/` (gitignored). `make init` creates empty p
 - Compose mounts each into `/run/secrets/<name>` (K8s-style file mount, **not encrypted**).
 - `load-secrets.sh` implements Docker `*_FILE` convention. Fails fast on missing files.
 - `check-secrets.sh` (run by `make up` / `make setup`) validates required secrets are non-empty.
-- Required: `token`, `telegram_allowed_chats`, `github_token`, `openai_api_key_{dispatcher,coder,qa,telegram}`, `openai_api_base_{dispatcher,coder,qa,telegram}`, `postgres_password`, `control_portal_token`, `ai_verifier_{api_key,api_url,model}`. Optional: `ftp_*`, `vercel_token`, `vercel_org_id` / `vercel_project_id`.
+- Required: `token`, `telegram_allowed_chats`, `github_token`, `openai_api_key_{dispatcher,coder,qa,telegram}`, `openai_api_base_{dispatcher,coder,qa,telegram}`, `postgres_password`, `control_portal_token`, `ai_verifier_{api_key,api_url,model}`. Optional: `ftp_*`, `vercel_token` / `vercel_org_id`.
 - `dense_mem_{dispatcher,coder,qa}` are **generated automatically** by `make setup` — do not fill manually.
 
 ## 🚀 Deployment
